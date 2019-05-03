@@ -561,7 +561,7 @@ var CombatTracker = CombatTracker || (function() {
             if (token.get('represents') > "") { 
                 let character = getObj('character', token.get('represents')),
                 initAttributes = state[state_name].config.initiative_attribute_name.split(','),
-                rollInit = randomInteger(10),
+                rollInit = randomInteger(20),
                 bonus=0.0,
                 init=0,
                 i=0;    

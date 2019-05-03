@@ -66,10 +66,6 @@ var CombatTracker = CombatTracker || (function() {
         let command = args.shift().substring(1);
         let extracommand = args.shift();
 
-        log(args)
-        log(command)
-        log(extracommand)
-        
         if(command !== state[state_name].config.command) return;
 
         if(extracommand === 'next'){
@@ -227,8 +223,6 @@ var CombatTracker = CombatTracker || (function() {
                 message = args.join(' ');
                 condition = { name, duration, direction, message };
 
-                log (direction)
-                log(duration)
                 if(!msg.selected || !msg.selected.length){
                     let tokenid = args.shift();
                     let token = getObj('graphic', tokenid);
@@ -562,31 +556,47 @@ var CombatTracker = CombatTracker || (function() {
             if(s._type !== 'graphic') return;
 
             let token = getObj('graphic', s._id),
-                whisper = (token.get('layer') === 'gmlayer') ? 'gm ' : '',
-                bonus = parseFloat(getAttrByName(token.get('represents'), state[state_name].config.initiative_attribute_name, 'current')) || 0;
-                let roll = randomInteger(20);
-                //pr = (Math.round(pr) !== pr) ? pr.toFixed(2) : pr;
-                
-            if(state[state_name].config.turnorder.show_initiative_roll){
-                let contents = ' \
-                <table style="width: 100%; text-align: left;"> \
-                    <tr> \
-                        <th>Modifier</th> \
-                        <td>'+bonus+'</td> \
-                    </tr> \
-                </table> \
-                <div style="text-align: center"> \
-                    <b style="font-size: 16pt;"> \
-                        <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+roll+'+'+bonus+']]</span><br><br> \
-                    </b> \
-                </div>'
-                makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
-            }
+                whisper = (token.get('layer') === 'gmlayer') ? 'gm ' : '';
+            
+            if (token.get('represents') > "") { 
+                let character = getObj('character', token.get('represents')),
+                initAttributes = state[state_name].config.initiative_attribute_name.split(','),
+                rollInit = randomInteger(10),
+                bonus=0.0,
+                init=0,
+                i=0;    
 
-            addToTurnorder({ id: token.get('id'), pr: roll+bonus, custom: '', pageid: token.get('pageid') });
+                for (i=0;i<initAttributes.length;i++) {
+    
+                    if (character != 'undefined') {
+                        init = getAttrByName(character.id,initAttributes[i],'current') 
+                        bonus = bonus + parseFloat(init)
+                    }    
+                 }    
+
+                if(state[state_name].config.turnorder.show_initiative_roll){
+                    let contents = ' \
+                    <table style="width: 100%; text-align: left;"> \
+                        <tr> \
+                            <th>Modifier</th> \
+                            <td>'+bonus+'</td> \
+                        </tr> \
+                    </table> \
+                    <div style="text-align: center"> \
+                        <b style="font-size: 16pt;"> \
+                            <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit.toString()+'+'+bonus.toString()+']]</span><br><br> \
+                        </b> \
+                    </div>'
+                    makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
+                }
+    
+                if(character != 'undefined') {
+                    addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
+                }   
+            }    
         });
 
-        if(sort){
+        if(sort){ 
             sortTurnorder();
         }
     },

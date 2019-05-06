@@ -1,7 +1,8 @@
 /* 
- * Version 0.2.5
+ * Version 0.2.8
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
+ * Changes in Version 0.2.8 by Victor B
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
  * My Discord Server: https://discord.gg/AcC9VME
@@ -93,7 +94,6 @@ var CombatTracker = CombatTracker || (function() {
 
         let name, duration, direction, message, condition;
 
-
         switch(extracommand){
             case 'help':
                 sendHelpMenu();
@@ -130,6 +130,8 @@ var CombatTracker = CombatTracker || (function() {
                         let key = setting.shift();
                         let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
 
+                        if(key === 'ini_die') value = parseInt(value);
+
                         state[state_name].config.turnorder[key] = value;
                     }
 
@@ -165,6 +167,10 @@ var CombatTracker = CombatTracker || (function() {
 
                     sendConfigMenu();
                 }                 
+            break;
+
+            case 'sort':
+                sortTurnorder();
             break;
 
             case 'prev':
@@ -207,7 +213,7 @@ var CombatTracker = CombatTracker || (function() {
 
                 let tokens = msg.selected.map(s => getObj('graphic', s._id));
 
-                sendTokenConditionMenu(tokens);
+                sendTokenConditionMenu(tokens, (args.shift() === 'p'));
 			}
             break;
 
@@ -387,14 +393,12 @@ var CombatTracker = CombatTracker || (function() {
             } else {
                 token.set('status_'+condition.icon, true);
             }
-            log(token)
-            log(announce)
             if(announce && extensions.StatusInfo){
                 StatusInfo.sendConditionToChat(si_condition);
             }            
         }
 
-        if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = 99;
+        if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = undefined;
 
         if(state[state_name].conditions[strip(token.get('id')).toLowerCase()]){
             state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach(c => {
@@ -402,6 +406,7 @@ var CombatTracker = CombatTracker || (function() {
                     removeCondition(token, condition.name.toLowerCase());   
                 }    
             });
+            if(hasCondition) return;
 
             state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
         }else{
@@ -508,6 +513,10 @@ var CombatTracker = CombatTracker || (function() {
         if(getCurrentTurn().id === obj.get('id')){
             changeMarker(obj);
         }
+
+        if(getNextTurn().id === obj.get('id')){
+            changeMarker(obj, true);
+        }
     },
 
     array_diff = (a, b) => {
@@ -552,58 +561,59 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     rollInitiative = (selected, sort) => {
+        let config = state[state_name].config;
+
         selected.forEach(s => {
             if(s._type !== 'graphic') return;
 
             let token = getObj('graphic', s._id),
-                whisper = (token.get('layer') === 'gmlayer') ? 'gm ' : '';
-            
+                whisper = (token.get('layer') === 'gmlayer') ? 'gm ' : '',
+                bonus=0.0,
+                rollInit = (config.turnorder.ini_die) ? randomInteger(config.turnorder.ini_die) : 0;
+
             if (token.get('represents') > "") { 
                 let character = getObj('character', token.get('represents')),
                 initAttributes = state[state_name].config.initiative_attribute_name.split(','),
-                rollInit = randomInteger(20),
-                bonus=0.0,
+                
+                
                 init=0,
                 i=0;    
 
                 for (i=0;i<initAttributes.length;i++) {
-    
                     if (character != 'undefined') {
                         init = getAttrByName(character.id,initAttributes[i],'current') 
                         bonus = bonus + parseFloat(init)
                     }    
-                 }    
+                }    
+            }     
+               
+            if(state[state_name].config.turnorder.show_initiative_roll){
+                let contents = ' \
+                <table style="width: 100%; text-align: left;"> \
+                    <tr> \
+                        <th>Modifier</th> \
+                        <td>'+bonus+'</td> \
+                    </tr> \
+                </table> \
+                <div style="text-align: center"> \
+                    <b style="font-size: 16pt;"> \
+                        <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
+                    </b> \
+                </div>'
+                makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
+            }
 
-                if(state[state_name].config.turnorder.show_initiative_roll){
-                    let contents = ' \
-                    <table style="width: 100%; text-align: left;"> \
-                        <tr> \
-                            <th>Modifier</th> \
-                            <td>'+bonus+'</td> \
-                        </tr> \
-                    </table> \
-                    <div style="text-align: center"> \
-                        <b style="font-size: 16pt;"> \
-                            <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit.toString()+'+'+bonus.toString()+']]</span><br><br> \
-                        </b> \
-                    </div>'
-                    makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
-                }
-    
-                if(character != 'undefined') {
-                    addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
-                }   
-            }    
+            addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
         });
 
-        if(sort){ 
+        if(sort){
             sortTurnorder();
         }
     },
 
     stopCombat = () => {
         if(timerObj) timerObj.remove();
-        removeMarker();
+        removeMarkers();
         stopTimer();
         paused = false;
         Campaign().set({
@@ -619,16 +629,17 @@ var CombatTracker = CombatTracker || (function() {
         state[state_name].turnorder = {};
     },
 
-    removeMarker = () => {
+    removeMarkers = () => {
         stopRotate();
         getOrCreateMarker().remove();
+        getOrCreateMarker(true).remove();
     },
 
-    resetMarker = () => {
-        let marker = getOrCreateMarker();
+    resetMarker = (next=false) => {
+        let marker = getOrCreateMarker(next);
         marker.set({
-            name: 'Round ' + round,
-            imgsrc: state[state_name].config.marker_img,
+            name: (next) ? 'NextMarker' : 'Round ' + round,
+            imgsrc: (next) ? state[state_name].config.next_marker_img : state[state_name].config.marker_img,
             pageid: Campaign().get('playerpageid'),
             layer: 'gmlayer',
             left: 35, top: 35,
@@ -643,7 +654,11 @@ var CombatTracker = CombatTracker || (function() {
 
         let turn = getCurrentTurn();
 
-        if(turn.id === '-1'){
+        if(turn.id === '-1'){ // If custom item.
+            if(turn.formula){
+                updatePR(turn, parseInt(turn.formula));
+            }
+
             if(!state[state_name].config.turnorder.skip_custom) resetMarker();
             else NextTurn();
             return;
@@ -656,36 +671,60 @@ var CombatTracker = CombatTracker || (function() {
 
         let token = getObj('graphic', turn.id);
 
-		if(!token){
+		if(token){
+            toFront(token);
+
+            if(state[state_name].config.timer.use_timer){
+                startTimer(token);
+            }
+
+            changeMarker(token || false);
+
+            if(state[state_name].config.macro.run_macro){
+                let ability = findObjs({ _characterid: token.get('represents'), _type: 'ability', name: state[state_name].config.macro.macro_name })
+                if(ability && ability.length){
+                    sendChat(token.get('name'), ability[0].get('action'), null, {noarchive:true} );
+                }
+            }
+
+            if(state[state_name].config.announcements.announce_turn){
+                announceTurn(token || turn.custom, (token.get('layer') === 'objects') ? '' : 'gm');
+            }else if(state[state_name].config.announcements.announce_conditions){
+                let name = token.get('name') || turn.custom;
+                let conditions = getConditionString(token);
+                if(conditions && conditions !== '') makeAndSendMenu(conditions, 'Conditions - ' + name, (token.get('layer') === 'objects') ? '' : 'gm');
+            }
+
+            Pull(token);
+            doFX(token);
+        }else{
             resetMarker();
-			return;
-		}
-
-        toFront(token);
-
-        if(state[state_name].config.timer.use_timer){
-            startTimer(token);
         }
 
-        changeMarker(token || false);
+        if(state[state_name].config.next_marker){
+            let nextTurn = getNextTurn();
+            let nextToken = getObj('graphic', nextTurn.id);
 
-        if(state[state_name].config.macro.run_macro){
-            let ability = findObjs({ _characterid: token.get('represents'), _type: 'ability', name: state[state_name].config.macro.macro_name })
-            if(ability && ability.length){
-                sendChat(token.get('name'), ability[0].get('action'), null, {noarchive:true} );
+            if(nextToken){
+                toFront(nextToken);
+
+                changeMarker(nextToken || false, true);
+            }else{
+                resetMarker(true);
             }
         }
+    },
 
-        if(state[state_name].config.announcements.announce_turn){
-            announceTurn(token || turn.custom, (token.get('layer') === 'objects') ? '' : 'gm');
-        }else if(state[state_name].config.announcements.announce_conditions){
-            let name = token.get('name') || turn.custom;
-            let conditions = getConditionString(token);
-            if(conditions && conditions !== '') makeAndSendMenu(conditions, 'Conditions - ' + name, (token.get('layer') === 'objects') ? '' : 'gm');
-        }
+    updatePR = (turn, modifier) => {
+        let turnorder = getTurnorder();
 
-        Pull(token);
-        doFX(token);
+        turnorder.forEach((t, i) => {
+            if(turn.id === t.id && turn.custom === t.custom){
+                turnorder[i].pr = parseInt(t.pr) + modifier;
+            }
+        });
+
+        setTurnorder(turnorder);
     },
 
     doFX = (token) => {
@@ -738,7 +777,7 @@ var CombatTracker = CombatTracker || (function() {
                 if(timerObj) timerObj.remove();
                 clearInterval(intervalHandle);
                 if(state[state_name].config.timer.auto_skip) NextTurn();
-                else makeAndSendMenu(token.get('name') + "'s time ran out!", '');
+                else if(token.get('layer') !== 'gmlayer') makeAndSendMenu(token.get('name') + "'s time ran out!", '');
             }
 
             time--;
@@ -785,15 +824,12 @@ var CombatTracker = CombatTracker || (function() {
     },
 
    getConditionString = (token) => {
-       log("get Condition String")
        let name = strip(token.get('id')).toLowerCase();
        let conditionsSTR = '';
 
        if(state[state_name].conditions[name] && state[state_name].conditions[name].length){
            for(let i = 0; i < state[state_name].conditions[name].length; i++){
                let condition = state[state_name].conditions[name][i];
-               log("duration:"+ condition.duration)
-               log("direction:"+ condition.direction)
                if(typeof condition.duration === 'undefined' || condition.duration === false){
                    conditionsSTR += '<strong>'+condition.name+'</strong><br>';
                }else if(condition.duration <= 1 && condition.direction != 0){
@@ -867,53 +903,80 @@ var CombatTracker = CombatTracker || (function() {
         PrevTurn();
     },
 
-    changeMarker = (token) => {
-        let marker = getOrCreateMarker();
+    changeMarker = (token, next=false) => {
+        let marker = getOrCreateMarker(next);
 
         if(!token){
-            resetMarker();
+            resetMarker(next);
             return;
         }
 
-        let settings = {
-            layer: token.get('layer'),
+        let position = {
             top: token.get('top'),
             left: token.get('left'),
             width: token.get('width')+(token.get('width')*0.35),
-            height: token.get('height')+(token.get('height')*0.35)
+            height: token.get('height')+(token.get('height')*0.35),
         };
 
-        marker.set(settings);
+        if(token.get('layer') !== marker.get('layer')){
+            if(marker.get('layer') === 'gmlayer'){ // Go from gmlayer to tokenlayer
+                marker.set(position);
+
+                setTimeout(() => {
+                    marker.set({ layer: 'objects' });
+                }, 500);
+            }else{ // Go from tokenlayer to gmlayer
+                marker.set({ layer: 'gmlayer' });
+
+                setTimeout(() => {
+                    marker.set(position);
+                }, 500);
+            }
+        }else{
+            marker.set(position);
+        }
+
         toBack(marker);
     },
 
-    getOrCreateMarker = () => {
-        let marker,
-            img = state[state_name].config.marker_img,
-            playerpageid = Campaign().get('playerpageid'),
+    getOrCreateMarker = (next=false, pageid=Campaign().get('playerpageid')) => {
+        let marker, markers,
+            imgsrc = (next) ? state[state_name].config.next_marker_img : state[state_name].config.marker_img
+
+        if(next){
             markers = findObjs({
-                pageid: playerpageid,
-                imgsrc: img
+                pageid,
+                imgsrc,
+                name: 'NextMarker'
             });
 
+        }else{
+            markers = findObjs({
+                pageid,
+                imgsrc
+            });
+        }
+
         markers.forEach((marker, i) => {
-            if(i > 0) marker.remove();
+            if(i > 0 && !next && marker.get('name') !== 'NextMarker') marker.remove();
         });
 
         marker = markers.shift();
         if(!marker) {
             marker = createObj('graphic', {
-                name: 'Round 0',
-                imgsrc: img,
-                pageid: playerpageid,
+                name: (next) ? 'NextMarker' : 'Round 0',
+                imgsrc,
+                pageid,
                 layer: 'gmlayer',
                 showplayers_name: true,
                 left: 35, top: 35,
                 width: 70, height: 70
             });
         }
-        checkMarkerturn(marker);
+        if(!next) checkMarkerturn(marker);
         toBack(marker);
+
+        //marker.set({ layer: 'gmlayer' });
 
         //startRotate(marker);
 
@@ -973,6 +1036,17 @@ var CombatTracker = CombatTracker || (function() {
         return getTurnorder().shift();
     },
 
+    getNextTurn = () => {
+        let returnturn;
+        getTurnorder().every((turn, i) => {
+            if(i > 0 && turn.id !== '-1' && turn.id !== getOrCreateMarker().get('id')){
+                returnturn = turn;
+                return false;
+            }else return true
+        });
+        return returnturn;
+    },
+
     addToTurnorder = (turn) => {
 		if(!turn){
 			return;
@@ -998,7 +1072,7 @@ var CombatTracker = CombatTracker || (function() {
         return Math.floor(Math.random()*(max-min+1)+min);
     },
 
-    sendTokenConditionMenu = (tokens) => {
+    sendTokenConditionMenu = (tokens, toPlayers) => {
         let contents = '<table style="width: 100%;">';
 
         let i = 0;
@@ -1042,7 +1116,7 @@ var CombatTracker = CombatTracker || (function() {
 
         contents += '</table>';
 
-        makeAndSendMenu(contents, '', 'gm');
+        makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
     },
 
     sendConditionsMenu = () => {
@@ -1136,6 +1210,8 @@ var CombatTracker = CombatTracker || (function() {
     sendConfigMenu = (first, message) => {
         let commandButton = makeButton('!'+state[state_name].config.command, '!' + state[state_name].config.command + ' config command|?{Command (without !)}', styles.button + styles.float.right),
             markerImgButton = makeButton('<img src="'+state[state_name].config.marker_img+'" width="30px" height="30px" />', '!' + state[state_name].config.command + ' config marker_img|?{Image Url}', styles.button + styles.float.right),
+            nextMarkerButton = makeButton(state[state_name].config.next_marker, '!' + state[state_name].config.command + ' config next_marker|'+!state[state_name].config.next_marker, styles.button + styles.float.right),
+            nextMarkerImgButton = makeButton('<img src="'+state[state_name].config.next_marker_img+'" width="30px" height="30px" />', '!' + state[state_name].config.command + ' config next_marker_img|?{Image Url}', styles.button + styles.float.right),
             iniAttrButton = makeButton(state[state_name].config.initiative_attribute_name, '!' + state[state_name].config.command + ' config initiative_attribute_name|?{Attribute|'+state[state_name].config.initiative_attribute_name+'}', styles.button + styles.float.right),
             closeStopButton = makeButton(state[state_name].config.close_stop, '!' + state[state_name].config.command + ' config close_stop|'+!state[state_name].config.close_stop, styles.button + styles.float.right),
             pullButton = makeButton(state[state_name].config.pull, '!' + state[state_name].config.command + ' config pull|'+!state[state_name].config.pull, styles.button + styles.float.right),
@@ -1144,6 +1220,8 @@ var CombatTracker = CombatTracker || (function() {
                 '<span style="'+styles.float.left+'">Command:</span> ' + commandButton,
                 '<span style="'+styles.float.left+'">Ini. Attribute:</span> ' + iniAttrButton,
                 '<span style="'+styles.float.left+'">Marker Img:</span> ' + markerImgButton,
+                '<span style="'+styles.float.left+'">Use Next Marker:</span> ' + nextMarkerButton,
+                '<span style="'+styles.float.left+'">Next Marker Img:</span> ' + nextMarkerImgButton,
                 '<span style="'+styles.float.left+'">Stop on close:</span> ' + closeStopButton,
                 '<span style="'+styles.float.left+'">Auto Pull Map:</span> ' + pullButton,
             ],
@@ -1163,6 +1241,7 @@ var CombatTracker = CombatTracker || (function() {
 
     sendConfigTurnorderMenu = () => {
         let throwIniButton = makeButton(state[state_name].config.turnorder.throw_initiative, '!' + state[state_name].config.command + ' config turnorder throw_initiative|'+!state[state_name].config.turnorder.throw_initiative, styles.button + styles.float.right),
+            iniDieButton = makeButton('d' + state[state_name].config.turnorder.ini_die, '!' + state[state_name].config.command + ' config turnorder ini_die|?{Die (without the d)|'+state[state_name].config.turnorder.ini_die+'}', styles.button + styles.float.right),
             showRollButton = makeButton(state[state_name].config.turnorder.show_initiative_roll, '!' + state[state_name].config.command + ' config turnorder show_initiative_roll|'+!state[state_name].config.turnorder.show_initiative_roll, styles.button + styles.float.right),
             autoSortButton = makeButton(state[state_name].config.turnorder.auto_sort, '!' + state[state_name].config.command + ' config turnorder auto_sort|'+!state[state_name].config.turnorder.auto_sort, styles.button + styles.float.right),
             rerollIniButton = makeButton(state[state_name].config.turnorder.reroll_ini_round, '!' + state[state_name].config.command + ' config turnorder reroll_ini_round|'+!state[state_name].config.turnorder.reroll_ini_round, styles.button + styles.float.right),
@@ -1178,7 +1257,11 @@ var CombatTracker = CombatTracker || (function() {
             ];
 
             if(state[state_name].config.turnorder.throw_initiative){
-                listItems.push('<span style="'+styles.float.left+'">Show Initiative:</span> ' + showRollButton)
+                listItems.push('<span style="'+styles.float.left+'">Ini Die:</span> ' + iniDieButton);
+            }
+
+            if(state[state_name].config.turnorder.throw_initiative){
+                listItems.push('<span style="'+styles.float.left+'">Show Initiative:</span> ' + showRollButton);
             }
 
         let contents = makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+'<hr>'+backButton;
@@ -1337,10 +1420,6 @@ var CombatTracker = CombatTracker || (function() {
             return;
         }
 
-        if(!StatusInfo.version || StatusInfo.version !== "0.3.8"){
-            makeAndSendMenu('Please update '+makeButton('StatusInfo', 'https://github.com/RobinKuiper/Roll20APIScripts/tree/master/StatusInfo', styles.textButton)+' to the latest version.', '', 'gm');
-            return;
-        }
 
         extensions.StatusInfo = true;
     },
@@ -1386,14 +1465,9 @@ var CombatTracker = CombatTracker || (function() {
         on('change:graphic:statusmarkers', handleStatusMarkerChange);
 
         if('undefined' !== typeof TokenMod && TokenMod.ObserveTokenChange){
-            log('tokenmod')
-             TokenMod.ObserveTokenChange(function(obj,prev){
-                 handleStatusMarkerChange(obj,prev);
-                      if(obj.get('statusmarkers') !== prev.statusmarkers){
-            sendChat('Observer Token Change','Token: '+obj.get('name')+' has changed status markers!');
-          } 
-             });
-           
+            TokenMod.ObserveTokenChange(function(obj,prev){
+                handleStatusMarkerChange(obj,prev);
+            });
         }
     },
 
@@ -1402,11 +1476,14 @@ var CombatTracker = CombatTracker || (function() {
             config: {
                 command: 'ct',
                 marker_img: 'https://s3.amazonaws.com/files.d20.io/images/52550079/U-3U950B3wk_KRtspSPyuw/thumb.png?1524507826',
+                next_marker: false,
+                next_marker_img: 'https://s3.amazonaws.com/files.d20.io/images/66352183/90UOrT-_Odg2WvvLbKOthw/thumb.png?1541422636',
                 initiative_attribute_name: 'initiative_bonus',
                 close_stop: true,
                 pull: true,
                 turnorder: {
                     throw_initiative: true,
+                    ini_die: 20,
                     show_initiative_roll: false,
                     auto_sort: true,
                     reroll_ini_round: false,
@@ -1449,6 +1526,12 @@ var CombatTracker = CombatTracker || (function() {
             if(!state[state_name].config.hasOwnProperty('marker_img')){
                 state[state_name].config.marker_img = defaults.config.marker_img;
             }
+            if(!state[state_name].config.hasOwnProperty('next_marker')){
+                state[state_name].config.next_marker = defaults.config.next_marker;
+            }
+            if(!state[state_name].config.hasOwnProperty('next_marker_img')){
+                state[state_name].config.next_marker_img = defaults.config.next_marker_img;
+            }
             if(!state[state_name].config.hasOwnProperty('initiative_attribute_name')){
                 state[state_name].config.initiative_attribute_name = defaults.config.initiative_attribute_name;
             }
@@ -1466,6 +1549,9 @@ var CombatTracker = CombatTracker || (function() {
                 }
                 if(!state[state_name].config.turnorder.hasOwnProperty('throw_initiative')){
                     state[state_name].config.turnorder.throw_initiative = defaults.config.turnorder.throw_initiative;
+                }
+                if(!state[state_name].config.turnorder.hasOwnProperty('ini_die')){
+                    state[state_name].config.turnorder.ini_die = defaults.config.turnorder.ini_die;
                 }
                 if(!state[state_name].config.turnorder.hasOwnProperty('auto_sort')){
                     state[state_name].config.turnorder.auto_sort = defaults.config.turnorder.auto_sort;

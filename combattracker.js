@@ -1,8 +1,7 @@
 /* 
- * Version 0.2.8
+ * Version 0.2.81
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
- * Changes in Version 0.2.8 by Victor B
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
  * My Discord Server: https://discord.gg/AcC9VME
@@ -406,7 +405,6 @@ var CombatTracker = CombatTracker || (function() {
                     removeCondition(token, condition.name.toLowerCase());   
                 }    
             });
-            if(hasCondition) return;
 
             state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
         }else{

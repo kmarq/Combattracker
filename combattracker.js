@@ -1,7 +1,8 @@
 /* 
- * Version 0.2.81
+ * Version 0.2.82
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
+ * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
  * My Discord Server: https://discord.gg/AcC9VME
@@ -376,6 +377,24 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     addCondition = (token, condition, announce=false) => {
+
+        if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = undefined;
+
+        if(state[state_name].conditions[strip(token.get('id')).toLowerCase()]){
+            log('Adding Condition')
+            state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach(c => {
+                log (c.name.toLowerCase())
+                log(condition.name.toLowerCase())
+                if(c.name.toLowerCase() === condition.name.toLowerCase()) {
+                    removeCondition(token, condition.name.toLowerCase());   
+                }    
+            });
+
+            state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
+        }else{
+            state[state_name].conditions[strip(token.get('id')).toLowerCase()] = [condition];
+        }        
+        
         if(extensions.StatusInfo){
             /*const duration = condition.duration;
             const direction = condition.direction;
@@ -397,19 +416,6 @@ var CombatTracker = CombatTracker || (function() {
             }            
         }
 
-        if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = undefined;
-
-        if(state[state_name].conditions[strip(token.get('id')).toLowerCase()]){
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach(c => {
-                if(c.name.toLowerCase() === condition.name.toLowerCase()) {
-                    removeCondition(token, condition.name.toLowerCase());   
-                }    
-            });
-
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
-        }else{
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()] = [condition];
-        }
 
         if(!condition.icon){
             makeAndSendMenu('Condition ' + condition.name + ' added to ' + token.get('name'));

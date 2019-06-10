@@ -1,11 +1,11 @@
 /* 
- * Version 0.2.82
+ * Version 0.2.94
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
- * My Discord Server: https://discord.gg/AcC9VME
+ * My Discord Server: https://discord.gg/AcC9VMEG
  * Roll20: https://app.roll20.net/users/1226016/robin
  * Roll20 Thread: https://app.roll20.net/forum/post/6349145/script-combattracker
  * Github: https://github.com/RobinKuiper/Roll20APIScripts
@@ -578,8 +578,6 @@ var CombatTracker = CombatTracker || (function() {
             if (token.get('represents') > "") { 
                 let character = getObj('character', token.get('represents')),
                 initAttributes = state[state_name].config.initiative_attribute_name.split(','),
-                
-                
                 init=0,
                 i=0;    
 
@@ -588,26 +586,72 @@ var CombatTracker = CombatTracker || (function() {
                         init = getAttrByName(character.id,initAttributes[i],'current') 
                         bonus = bonus + parseFloat(init)
                     }    
-                }    
-            }     
-               
-            if(state[state_name].config.turnorder.show_initiative_roll){
-                let contents = ' \
-                <table style="width: 100%; text-align: left;"> \
-                    <tr> \
-                        <th>Modifier</th> \
-                        <td>'+bonus+'</td> \
-                    </tr> \
-                </table> \
-                <div style="text-align: center"> \
-                    <b style="font-size: 16pt;"> \
-                        <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
-                    </b> \
-                </div>'
-                makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
-            }
-
-            addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
+                } 
+                
+                let rollAdvantage = getAttrByName(character.id, 'initiative_style', 'current');
+                if (rollAdvantage) {
+                    if (rollAdvantage == '{@{d20},@{d20}}kh1') {
+                        let rollInit1 = randomInteger(20) 
+                        let rollInit2 = randomInteger(20) 
+                        if (rollInit1 >= rollInit2) {
+                            rollInit = rollInit1
+                        } else {
+                            rollInit = rollInit2
+                        }
+                        if(state[state_name].config.turnorder.show_initiative_roll){
+                            let contents = ' \
+                               <table style="width: 50%; text-align: left; float: left;"> \
+                                    <tr> \
+                                        <th>Modifier</th> \
+                                        <td>'+bonus+'</td> \
+                                    </tr> \
+                                </table> \
+                                <div style="text-align: center"> \
+                                    <b style="font-size: 14pt;"> \
+                                        <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit1+'+'+bonus+']]</span><br><br> \
+                                    </b> \
+                                </div> \
+                                <div style="text-align: center"> \
+                                    <b style="font-size: 10pt;"> \
+                                        <span style="border: 1px solid red; padding-bottom: 2px; padding-top: 4px;">[['+rollInit2+'+'+bonus+']]</span><br><br> \
+                                    </b> \
+                                </div>'                                
+                            makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
+                        }
+                    } else if(state[state_name].config.turnorder.show_initiative_roll) { 
+                        
+                        let contents = ' \
+                        <table style="width: 100%; text-align: left;"> \
+                            <tr> \
+                                <th>Modifier</th> \
+                                <td>'+bonus+'</td> \
+                            </tr> \
+                        </table> \
+                        <div style="text-align: center"> \
+                            <b style="font-size: 16pt;"> \
+                                <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
+                            </b> \
+                        </div>'
+                        makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);                        
+                    }    
+                }  else if(state[state_name].config.turnorder.show_initiative_roll) { 
+                    let contents = ' \
+                    <table style="width: 100%; text-align: left;"> \
+                        <tr> \
+                            <th>Modifier</th> \
+                            <td>'+bonus+'</td> \
+                        </tr> \
+                    </table> \
+                    <div style="text-align: center"> \
+                        <b style="font-size: 16pt;"> \
+                            <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
+                        </b> \
+                    </div>'
+                    makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
+                }   
+                addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
+            }   
+            
         });
 
         if(sort){

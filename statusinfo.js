@@ -1,5 +1,5 @@
 /*
- * Version: 0.3.11
+ * Version: 0.3.12
  * Made By Robin Kuiper
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
@@ -56,7 +56,10 @@ var StatusInfo = StatusInfo || (function() {
     state_name = 'STATUSINFO',
 
     handleInput = (msg) => {
-        if (msg.type != 'api') return;
+ //       if (msg.type != 'api') return;
+        if (msg.content.indexOf('!condition')!==0){
+            return;
+        }
 
         // !condition BlindedBlinded
 
@@ -559,10 +562,10 @@ var StatusInfo = StatusInfo || (function() {
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' help</span> - Shows this menu.',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' config</span> - Shows the configuration menu.',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' [CONDITION]</span> - Shows the description of the condition entered.',
-            ' ',
+            ' ',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' add [CONDITIONS]</span> - Add the given condition(s) to the selected token(s).',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' remove [CONDITIONS]</span> - Remove the given condition(s) from the selected token(s).',
-            ' ',
+            ' ',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' config export</span> - Exports the config (with conditions).',
             '<span style="text-decoration: underline">!'+state[state_name].config.command+' config import [JSON]</span> - Imports the given config (with conditions).'
         ]

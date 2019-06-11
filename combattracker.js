@@ -1,5 +1,5 @@
 /* 
- * Version 0.2.94
+ * Version 0.3.0
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -381,15 +381,12 @@ var CombatTracker = CombatTracker || (function() {
         if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = undefined;
 
         if(state[state_name].conditions[strip(token.get('id')).toLowerCase()]){
-            log('Adding Condition')
             state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach(c => {
-                log (c.name.toLowerCase())
                 log(condition.name.toLowerCase())
                 if(c.name.toLowerCase() === condition.name.toLowerCase()) {
                     removeCondition(token, condition.name.toLowerCase());   
                 }    
             });
-
             state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
         }else{
             state[state_name].conditions[strip(token.get('id')).toLowerCase()] = [condition];
@@ -399,14 +396,19 @@ var CombatTracker = CombatTracker || (function() {
             /*const duration = condition.duration;
             const direction = condition.direction;
             const message = condition.message;*/
-            let si_condition = StatusInfo.getConditionByName(condition.name) || condition;
+            let si_condition = StatusInfo.getConditionByName(condition.name.toLowerCase()) || condition.toLowerCase();
             condition.name = si_condition.name;
             condition.icon = si_condition.icon;
+            
             if (parseInt(condition.duration) > 1) {
                 if (condition.name.toLowerCase() == 'dead') {
                     token.set('status_'+condition.icon, true);
-                } else {    
-                    token.set('status_'+condition.icon, parseInt(condition.duration));
+                } else {   
+                    if (!state[state_name].config.duration) {
+                        token.set('status_'+condition.icon, true);
+                    } else {
+                        token.set('status_'+condition.icon, parseInt(condition.duration));
+                    }    
                 }    
             } else {
                 token.set('status_'+condition.icon, true);
@@ -1263,6 +1265,7 @@ var CombatTracker = CombatTracker || (function() {
             iniAttrButton = makeButton(state[state_name].config.initiative_attribute_name, '!' + state[state_name].config.command + ' config initiative_attribute_name|?{Attribute|'+state[state_name].config.initiative_attribute_name+'}', styles.button + styles.float.right),
             closeStopButton = makeButton(state[state_name].config.close_stop, '!' + state[state_name].config.command + ' config close_stop|'+!state[state_name].config.close_stop, styles.button + styles.float.right),
             pullButton = makeButton(state[state_name].config.pull, '!' + state[state_name].config.command + ' config pull|'+!state[state_name].config.pull, styles.button + styles.float.right),
+            durationButton = makeButton(state[state_name].config.duration, '!' + state[state_name].config.command + ' config duration|'+!state[state_name].config.duration, styles.button + styles.float.right),
             
             listItems = [
                 '<span style="'+styles.float.left+'">Command:</span> ' + commandButton,
@@ -1272,6 +1275,7 @@ var CombatTracker = CombatTracker || (function() {
                 '<span style="'+styles.float.left+'">Next Marker Img:</span> ' + nextMarkerImgButton,
                 '<span style="'+styles.float.left+'">Stop on close:</span> ' + closeStopButton,
                 '<span style="'+styles.float.left+'">Auto Pull Map:</span> ' + pullButton,
+                '<span style="'+styles.float.left+'">Display Duration:</span> ' + durationButton,
             ],
 
             configTurnorderButton = makeButton('Turnorder Config', '!'+state[state_name].config.command + ' config turnorder', styles.button),
@@ -1589,6 +1593,9 @@ var CombatTracker = CombatTracker || (function() {
             if(!state[state_name].config.hasOwnProperty('pull')){
                 state[state_name].config.pull = defaults.config.pull;
             }
+            if(!state[state_name].config.hasOwnProperty('duration')){
+                state[state_name].config.duration = defaults.config.duration;
+            }            
             if(!state[state_name].config.hasOwnProperty('turnorder')){
                 state[state_name].config.turnorder = defaults.config.turnorder;
             }else{

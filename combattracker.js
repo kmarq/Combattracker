@@ -1,5 +1,5 @@
 /* 
- * Version 0.3.0
+ * Version 1.0.0 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -13,7 +13,6 @@
  * Patreon: https://patreon.com/robinkuiper
  * Paypal.me: https://www.paypal.me/robinkuiper
 */
-/* globals StatusInfo, TokenMod */
 
 var CombatTracker = CombatTracker || (function() {
     'use strict';

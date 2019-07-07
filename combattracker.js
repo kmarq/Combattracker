@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.0 Beta
+ * Version 1.0.1 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -14,11 +14,21 @@
  * Paypal.me: https://www.paypal.me/robinkuiper
 */
 
+/* TODO
+ *
+ * Styling
+ * More chat message options
+ * Show menu with B shows always
+ * Add icon if not StatusInfo (?)    (IF YES, remove conditions on statusmarker remove)
+ * Edit Conditions
+*/
+/* globals StatusInfo, TokenMod */
+
 var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.0 Beta',
+	    version = '1.0.1 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -1266,7 +1276,7 @@ var CombatTracker = CombatTracker || (function() {
         if (args.length > 0) {
     		let setting = args.shift().split('|'),
     		    key     = setting.shift(),
-    		    value   = setting.shift();
+    		    value   = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
 		
 			if (debug) {
 			    log('Settings:' + setting)
@@ -1293,75 +1303,6 @@ var CombatTracker = CombatTracker || (function() {
         return state[statusState].conditions;
     },
 	
-    // sendTokenConditionMenu = (tokens, toPlayers) => {
-    //     let contents = '<table style="width: 100%;">';
-
-    //     let i = 0;
-    //     tokens.forEach(token => {
-    //         if(!token) return;
-
-    //         let conditions = state[combatState].conditions[strip(token.get('id')).toLowerCase()];
-
-    //         if(i) contents += '<tr><td colspan="2"><hr></td></tr>';
-    //         i++;
-
-    //         contents += ' \
-    //             <tr> \
-    //                 <td colspan="2" style="font-size: 12pt; font-weight: bold;"> \
-    //                     <img src='+token.get('imgsrc')+' style="width: 32px; height: 32px; vertical-align: middle;" /> \
-    //                     <span style="vertical-align: middle;">'+token.get('name')+'</span> \
-    //                 </td> \
-    //             </tr>';
-
-    //         if(!conditions || !conditions.length){
-    //             contents += '<tr><td colspan="2" style="text-align: center;"><i>None</i></td></tr>';
-    //         }else{
-    //             conditions.forEach(condition => {
-    //                 let si_condition = false;
-    //                 if(extensions.StatusInfo){
-    //                     si_condition = StatusInfo.getConditionByKey(condition.name) || false;
-    //                 }
-
-    //                 let removeButton = makeButton('<img src="https://s3.amazonaws.com/files.d20.io/images/11381509/YcG-o2Q1-CrwKD_nXh5yAA/thumb.png?1439051579" />', '!'+state[combatState].config.command + ' remove ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;');
-    //                 let showButton = (condition.message || si_condition) ? makeButton('<img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699008-icon-22-eye-128.png" />', '!'+state[combatState].config.command + ' showcondition ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;') : '';
-    //                 let name = condition.name;
-    //                 name += (condition.duration) ? ' (' + condition.duration + ')' : '';
-    //                 contents += ' \
-    //                 <tr> \
-    //                     <td style="text-align: center">'+name+'</td> \
-    //                     <td>'+removeButton+showButton+'</td> \
-    //                 </tr>';
-    //             });
-    //         }
-    //     });
-
-    //     contents += '</table>';
-
-    //     makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
-    // },
-
-//    sendConditionsMenu = () => {
-//        let addButton;
-//
-//        let SI_listItems = [];
-//        if(extensions.StatusInfo){
-//            Object.keys(StatusInfo.getConditions()).map(key => StatusInfo.getConditions()[key]).forEach(condition => {
-//                let conditionSTR = condition.name + ' ?{Duration} ?{Direction|-1} ?{Message}';
-//                addButton = makeButton(StatusInfo.getIcon(condition.icon, 'margin-right: 5px; margin-top: 5px; display: inline-block;') + condition.name, '!'+state[combatState].config.command + ' add ' + conditionSTR, styles.textButton);
-//                SI_listItems.push('<span style="'+styles.float.left+'">'+addButton+'</span>');
-//            });
-//        }
-
-//        let contents = '';
-//
-//        contents += '<hr>';
-//
-//
-//        contents += '<br><br>' + makeButton('Edit Favorites', '!'+state[combatState].config.command + ' favorites', styles.button + styles.fullWidth);
-//
-//        makeAndSendMenu(contents, 'Conditions', 'gm');
-//    },
-
     sendConfigMenu = () => {
 
 		let configCombatButton          = makeBigButton('Combat', '!ct config combat'),
@@ -1559,6 +1500,8 @@ var CombatTracker = CombatTracker || (function() {
         })
         markerDropdown += '}';
 
+        log('Override:'+!condition.override)
+        log('Favorite:'+!condition.favorite)
 		let	listItems = [
 				makeTextButton('Name', condition.name, '!condition config-conditions '+key+' name|?{Name}'),
 				makeTextButton('Marker', getIcon(condition.icon) || condition.icon, '!condition config-conditions '+key+' icon|'+markerDropdown),				

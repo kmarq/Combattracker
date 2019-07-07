@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.1 Beta
+ * Version 1.0.3 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -28,7 +28,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.1 Beta',
+	    version = '1.0.3 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -373,7 +373,11 @@ var CombatTracker = CombatTracker || (function() {
             if (newCondition.name == 'dead' || newCondition.duration <= 1) {
                 token.set('status_'+newCondition.icon, true);
             } else {   
-                token.set('status_'+newCondition.icon,newCondition.duration);
+                if (newCondition.duration >= 10) {
+                    token.set('status_'+newCondition.icon, true);
+                } else {
+                    token.set('status_'+newCondition.icon,newCondition.duration);
+                }
             }  
             
             if (state[statusState].config.showConditions) {
@@ -723,7 +727,7 @@ var CombatTracker = CombatTracker || (function() {
     },
 
 
-    doTurnorderChange = (prev=false) => {
+    doTurnorderChange = (prev=false, delay=true) => {
         //if(!Campaign().get('initiativepage') || getTurnorder().length <= 1) return;
 
         let turn = getCurrentTurn();
@@ -772,7 +776,7 @@ var CombatTracker = CombatTracker || (function() {
             }
 
             if (state[combatState].config.announcements.announce_turn) {
-                announcePlayer(token, (token.get('layer') === 'objects') ? '' : 'gm', prev);
+                announcePlayer(token, (token.get('layer') === 'objects') ? '' : 'gm', prev, delay);
                 //announcePlayer(token || turn.custom, (token.get('layer') === 'objects') ? '' : 'gm');
             }
             
@@ -873,13 +877,13 @@ var CombatTracker = CombatTracker || (function() {
         paused = !paused;
     },
 
-    announcePlayer = (token, target, prev) => {
+    announcePlayer = (token, target, prev, delay) => {
         let name, imgurl, conditions, image, doneButton, delayButton, contents;
         //set up components
         target      = (state[combatState].config.announcements.whisper_turn_gm) ? 'gm' : target;
         name        = token.get('name');
         imgurl      = token.get('imgsrc');
-        conditions  = getAnnounceConditions(token, prev);
+        conditions  = getAnnounceConditions(token, prev, delay);
         image       = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : ''
         name        = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name,
         doneButton  = makeImageButton('!ct next',doneImage,'Done with Round','transparent',18)
@@ -897,7 +901,7 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents, '', target);
     },
 
-    getAnnounceConditions = (token, prev) => {
+    getAnnounceConditions = (token, prev, delay) => {
         let output = ' '
         if (debug) {
             log('Announce Condition') 
@@ -917,18 +921,25 @@ var CombatTracker = CombatTracker || (function() {
                 log('Direction:' +condition.direction)
             }            
             
-            if (!prev) {
-                condition.duration = condition.duration + condition.direction
-            } else {
-                condition.duration = condition.duration - condition.direction
-            }
+            if (!delay) {
+                if (!prev) {
+                    condition.duration = condition.duration + condition.direction
+                } else {
+                    condition.duration = condition.duration - condition.direction
+                }
+            }    
             
             if (condition.duration == 0 && condition.direction != 0) {
                 output += '<strong>'+condition.name+'</strong> removed.';
                 removeCondition(token, condition.name);  
             } else if (condition.duration > 0 && condition.direction != 0) {
                 output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Rounds Left';
-                token.set('status_'+condition.icon, condition.duration);
+                
+                if (condition.duration >= 10) {                
+                    token.set('status_'+condition.icon, true);
+                } else {
+                    token.set('status_'+condition.icon, condition.duration);
+                }    
             } else if (condition.direction == 0) {
                 output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Permanent (until removed)';
             }    
@@ -969,7 +980,7 @@ var CombatTracker = CombatTracker || (function() {
 //        turnorder.unshift(nextTurn)
         //set the turnorder and move the marker
         setTurnorder(turnorder);
-        doTurnorderChange();
+        doTurnorderChange(false,true);
     },
     
     NextTurn = () => {

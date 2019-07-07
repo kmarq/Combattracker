@@ -13,38 +13,62 @@
  * Patreon: https://patreon.com/robinkuiper
  * Paypal.me: https://www.paypal.me/robinkuiper
 */
-
-/* TODO
- *
- * Styling
- * More chat message options
- * Show menu with B shows always
- * Add icon if not StatusInfo (?)    (IF YES, remove conditions on statusmarker remove)
- * Edit Conditions
-*/
 /* globals StatusInfo, TokenMod */
 
 var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
+	    version = '1.0.0 Beta',
         timerObj,
         intervalHandle,
+        debug = true,
         rotationInterval,
         paused = false,
         observers = {
             tokenChange: []
         },
+		whisper, handled = [],	
         extensions = {
             StatusInfo: true // This will be set to true automatically if you have StatusInfo
-        };
+        },
+        startImage = '4',
+		pauseImage = '5',
+        stopImage = '6',
+        tagImage = '3',
+        noTagImage = 'd',
+        deleteImage = 'D',
+        shuffleImage = ';',
+        randomSingleImage = '`',
+        randomLoopImage = '?',
+        togetherImage = 'J',
+        loopImage = 'r',
+        singleImage = '1',
+        lockImage = ')',
+        unlockImage = '(',
+        backImage = 'y',
+        nextImage = ']',
+        prevImage = '[',
+        decreaseImage = '<',
+        increaseImage = '>',
+        timerImage = 't',
+        favoriteImage = 'S',
+        allConditionsImage = 'G',
+        addImage = '&',		
+        doneImage = '3',
+        delayImage = '}';
 
-    // Styling for the chat responses.
+    //Styling for the chat responses.
     const styles = {
         reset: 'padding: 0; margin: 0;',
         menu:  'background-color: #fff; border: 1px solid #000; padding: 5px; border-radius: 5px;',
-        button: 'background-color: #000; border: 1px solid #292929; border-radius: 3px; padding: 5px; color: #fff; text-align: center;',
-        textButton: 'background-color: transparent; border: none; padding: 0; color: #000; text-decoration: underline',
+ 		title: 'font-size:14px;font-weight:bold',
+ 		version:'font-size:10px;',
+ 		header: 'margin-top:10px;margin-bottom:5px;font-weight:bold;font-style:italic;display:inline-block;',
+        button: 'background-color: #000; border: 1px solid #292929; border-radius: 3px; padding: 5px; color: #fff; text-align: center;width:100%',
+        textButton: 'background-color:#fff; color: #000; text-align: center; float: right;',
+ 		linkButton: 'background-color:#fff; color: #000; text-align: center;vertical-align:middle',
+ 		textLabel: 'float:left;text-align:center;margin-top:8px',
         list: 'list-style: none;',
         float: {
             right: 'float: right;',
@@ -55,641 +79,456 @@ var CombatTracker = CombatTracker || (function() {
         underline: 'text-decoration: underline;',
         strikethrough: 'text-decoration: strikethrough'
     },
+    // Styling for the chat responses.
+    style = "overflow: hidden; background-color: #fff; border: 1px solid #000; padding: 5px; border-radius: 5px;",
+    buttonStyle = "background-color: #000; border: 1px solid #292929; border-radius: 3px; padding: 5px; color: #fff; text-align: center; float: right;",
+    conditionStyle = "background-color: #fff; border: 1px solid #000; padding: 5px; border-radius: 5px;",
+    conditionButtonStyle = "text-decoration: underline; background-color: #fff; color: #000; padding: 0",
+    listStyle = 'list-style: none; padding: 0; margin: 0;',
+
+    icon_image_positions = {red:"#C91010",blue:"#1076C9",green:"#2FC910",brown:"#C97310",purple:"#9510C9",pink:"#EB75E1",yellow:"#E5EB75",dead:"X",skull:0,sleepy:34,"half-heart":68,"half-haze":102,interdiction:136,snail:170,"lightning-helix":204,spanner:238,"chained-heart":272,"chemical-bolt":306,"death-zone":340,"drink-me":374,"edge-crack":408,"ninja-mask":442,stopwatch:476,"fishing-net":510,overdrive:544,strong:578,fist:612,padlock:646,"three-leaves":680,"fluffy-wing":714,pummeled:748,tread:782,arrowed:816,aura:850,"back-pain":884,"black-flag":918,"bleeding-eye":952,"bolt-shield":986,"broken-heart":1020,cobweb:1054,"broken-shield":1088,"flying-flag":1122,radioactive:1156,trophy:1190,"broken-skull":1224,"frozen-orb":1258,"rolling-bomb":1292,"white-tower":1326,grab:1360,screaming:1394,grenade:1428,"sentry-gun":1462,"all-for-one":1496,"angel-outfit":1530,"archery-target":1564},
+    markers = ['blue', 'brown', 'green', 'pink', 'purple', 'red', 'yellow', '-', 'all-for-one', 'angel-outfit', 'archery-target', 'arrowed', 'aura', 'back-pain', 'black-flag', 'bleeding-eye', 'bolt-shield', 'broken-heart', 'broken-shield', 'broken-skull', 'chained-heart', 'chemical-bolt', 'cobweb', 'dead', 'death-zone', 'drink-me', 'edge-crack', 'fishing-net', 'fist', 'fluffy-wing', 'flying-flag', 'frozen-orb', 'grab', 'grenade', 'half-haze', 'half-heart', 'interdiction', 'lightning-helix', 'ninja-mask', 'overdrive', 'padlock', 'pummeled', 'radioactive', 'rolling-bomb', 'screaming', 'sentry-gun', 'skull', 'sleepy', 'snail', 'spanner',   'stopwatch','strong', 'three-leaves', 'tread', 'trophy', 'white-tower'],
+    shaped_conditions = ['blinded', 'charmed', 'deafened', 'frightened', 'grappled', 'incapacitated', 'invisible', 'paralyzed', 'petrified', 'poisoned', 'prone', 'restrained', 'stunned', 'unconscious'],
+	
     script_name = 'CombatTracker',
-    state_name = 'COMBATTRACKER',
+    combatState = 'COMBATTRACKER',
+    statusState = 'STATUSINFO',
 
     handleInput = (msg) => {
- //       if (msg.type != 'api') return;
-        if (msg.content.indexOf('!ct')!==0){
+
+        if (msg.content.indexOf('!ct')!==0 && msg.content.indexOf('!condition')!==0) {
             return;
         }
+		
         let args = msg.content.split(' ');
         let command = args.shift().substring(1);
         let extracommand = args.shift();
-
-        if(command !== state[state_name].config.command) return;
-
-        if(extracommand === 'next'){
-            if(!getTurnorder().length) return;
-
-            if(playerIsGM(msg.playerid) || msg.playerid === 'api'){
-                NextTurn();
-                return;
-            }
-
-            let turn = getCurrentTurn(),
-                token = getObj('graphic', turn.id);
-            if(token){
-                let character = getObj('character', token.get('represents'));
-                if((token.get('controlledby').split(',').includes(msg.playerid) || token.get('controlledby').split(',').includes('all')) ||
-                    (character && (character.get('controlledby').split(',').includes(msg.playerid) || character.get('controlledby').split(',').includes(msg.playerid)))){
-                        NextTurn();
-                        // SHOW MENU
-                    }
-            }
-        }
-
-        // Below commands are only for GM's
-        if(!playerIsGM(msg.playerid)) return;
-
-        let name, duration, direction, message, condition;
-
-        switch(extracommand){
-            case 'help':
-                sendHelpMenu();
-            break;
-
-            case 'reset':
-                switch(args.shift()){
-                    case 'conditions':
-                        state[state_name].conditions = {};
-                    break;
-
-                    default:
-                        state[state_name] = {};
-                        setDefaults(true);
-                        sendConfigMenu();
-                    break;
-                }
-            break;
-
-            case 'config':
-                if(args[0] === 'timer'){
-                    if(args[1]){
-                        let setting = args[1].split('|');
-                        let key = setting.shift();
-                        let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                        state[state_name].config.timer[key] = value;
-                    }
-
-                    sendConfigTimerMenu();
-                }else if (args[0] === 'turnorder'){
-                    if(args[1]){
-                        let setting = args[1].split('|');
-                        let key = setting.shift();
-                        let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                        if(key === 'ini_die') value = parseInt(value);
-
-                        state[state_name].config.turnorder[key] = value;
-                    }
-
-                    sendConfigTurnorderMenu();
-                }else if (args[0] === 'announcements'){
-                    if(args[1]){
-                        let setting = args[1].split('|');
-                        let key = setting.shift();
-                        let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                        state[state_name].config.announcements[key] = value;
-                    }
-
-                    sendConfigAnnounceMenu();
-                }else if (args[0] === 'macro'){
-                    if(args[1]){
-                        let setting = args[1].split('|');
-                        let key = setting.shift();
-                        let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                        state[state_name].config.macro[key] = value;
-                    }
-
-                    sendConfigMacroMenu();
-                }else{
-                    if(args[0]){
-                        let setting = args.shift().split('|');
-                        let key = setting.shift();
-                        let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                        state[state_name].config[key] = value;
-                    }
-
-                    sendConfigMenu();
-                }                 
-            break;
-
-            case 'sort':
-                sortTurnorder();
-            break;
-
-            case 'prev':
-                PrevTurn();
-            break;
-
-            case 'start':
-                startCombat(msg.selected);
-
-                if(args.shift() === 'b') sendMenu();
-            break;
-
-            case 'stop':
-                stopCombat();
-
-                if(args.shift() === 'b') sendMenu();
-            break;
-
-            case 'st':
-                stopTimer();
-
-                if(args.shift() === 'b') sendMenu();
-            break;
-
-            case 'pt':
-                pauseTimer();
-
-                if(args.shift() === 'b') sendMenu();
-            break;
-
-            case 'conditions':
-                sendConditionsMenu();
-            break;
-
-            case 'show': {
-                if(!msg.selected || !msg.selected.length){
-                    makeAndSendMenu('No tokens are selected.', '', 'gm');
-                    return;
-                }
-
-                let tokens = msg.selected.map(s => getObj('graphic', s._id));
-
-                sendTokenConditionMenu(tokens, (args.shift() === 'p'));
-			}
-            break;
-
-            case 'add':
-                name = args.shift();
-                if(!name){
-                    makeAndSendMenu('No condition name was given.', '', 'gm');
-                    return;
-                }
-                duration = args.shift();
-                duration = (!duration || duration === 0) ? 'none' : duration;
-                direction = args.shift() || 0;
-                message = args.join(' ');
-                condition = { name, duration, direction, message };
-
-                if(!msg.selected || !msg.selected.length){
-                    let tokenid = args.shift();
-                    let token = getObj('graphic', tokenid);
-                    if(!tokenid || !token){
-                        makeAndSendMenu('No tokens were selected.', '', 'gm');
-                        return;
-                    }
-
-                    addCondition(token, condition, true);
-                    
-                    return;
-                }
-
-                msg.selected.forEach(s => {
-                    let token = getObj(s._type, s._id);
-                    if(!token) return;
-
-                    addCondition(token, condition, true);
-                });
-            break;
-
-            case 'addfav':
-                name= args.shift();
-                duration = args.shift();
-                direction = args.shift() || -1;
-                message = args.join(' ');
-                condition = { name, duration, direction, message };
-
-                addOrEditFavoriteCondition(condition);
-
-                sendFavoritesMenu();
-            break;
-
-            case 'editfav':
-                name = args.shift();
-
-                if(!name){
-                    makeAndSendMenu('No condition name was given.', '', 'gm');
-                    return;
-                }
-
-                name = strip(name).toLowerCase();
-                condition = state[state_name].favorites[name];
-
-                if(!condition){
-                    makeAndSendMenu('Condition does not exists.', '', 'gm');
-                    return;
-                }                
-
-                if(args[0]){
-                    let setting = args.shift().split('|');
-                    let key = setting.shift();
-                    let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-
-                    state[state_name].favorites[name][key] = value;
-
-                    if(key === 'name'){
-                        state[state_name].favorites[strip(value).toLowerCase()] = state[state_name].favorites[name];
-                        delete state[state_name].favorites[name];
-                    }
-                }
-
-                sendEditFavoriteConditionMenu(condition);
-            break;
-
-            case 'removefav':
-                removeFavoriteCondition(args.shift());
-
-                sendFavoritesMenu();
-            break;
-
-            case 'favorites':
-                sendFavoritesMenu();
-            break;
-
-            case 'remove': {
-                let cname = args.shift();
-                let tokenid = args.shift();
-                let token;
-
-                if(!cname){
-                    makeAndSendMenu('No condition was given.', '', 'gm');
-                    return;
-                }
-
-                if(tokenid){
-                    token = getObj('graphic', tokenid);
-                    if(token){
-                        removeCondition(token, cname);
-                        sendTokenConditionMenu([token]);
-                        return;
-                    }
-                }
-
-                if(!msg.selected || !msg.selected.length){
-                    makeAndSendMenu('No tokens were selected.', '', 'gm');
-                    return;
-                }
-
-                msg.selected.forEach(s => {
-                    token = getObj(s._type, s._id);
-                    if(!token) return;
-
-                    removeCondition(token, cname);
-                });
-			}
-            break;
-
-            case 'showcondition': {
-                let cname = args.shift();
-                let tokenid = args.shift();
-                let token;
-
-                if(!cname){
-                    makeAndSendMenu('No condition was given.', '', 'gm');
-                    return;
-                }
-
-                if(tokenid){
-                    token = getObj('graphic', tokenid);
-                    if(token){
-                        showCondition(token, cname);
-                    }
-                }
-            }
-            break;
-
-            default:
-                sendMenu();
-            break;
-        }
-    },
-
-    addOrEditFavoriteCondition = (condition) => {
-        if(condition.duration === 0 || condition.duration === '') condition.duration = undefined;
-
-        let strippedName = strip(condition.name).toLowerCase();
-
-        state[state_name].favorites[strippedName] = condition;
-    },
-
-    removeFavoriteCondition = (name) => {
-        name = strip(name).toLowerCase();
-
-        delete state[state_name].favorites[name];
-    },
-
-    addCondition = (token, condition, announce=false) => {
-
-        if(!condition.duration || condition.duration === 0 || condition.duration === '0' || condition.duration === '' || condition.duration === 'none') condition.duration = undefined;
-
-        if(state[state_name].conditions[strip(token.get('id')).toLowerCase()]){
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach(c => {
-                log(condition.name.toLowerCase())
-                if(c.name.toLowerCase() === condition.name.toLowerCase()) {
-                    removeCondition(token, condition.name.toLowerCase());   
-                }    
-            });
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()].push(condition);
-        }else{
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()] = [condition];
-        }        
         
-        if(extensions.StatusInfo){
-            /*const duration = condition.duration;
-            const direction = condition.direction;
-            const message = condition.message;*/
-            let si_condition = StatusInfo.getConditionByName(condition.name.toLowerCase()) || condition.toLowerCase();
-            condition.name = si_condition.name;
-            condition.icon = si_condition.icon;
-            
-            if (parseInt(condition.duration) > 1) {
-                if (condition.name.toLowerCase() == 'dead') {
-                    token.set('status_'+condition.icon, true);
-                } else {   
-                    if (!state[state_name].config.duration) {
-                        token.set('status_'+condition.icon, true);
-                    } else {
-                        token.set('status_'+condition.icon, parseInt(condition.duration));
-                    }    
-                }    
-            } else {
-                token.set('status_'+condition.icon, true);
-            }
-            if(announce && extensions.StatusInfo){
-                StatusInfo.sendConditionToChat(si_condition);
-            }            
+        if (debug) {
+            log(args)
+            log(command)
+            log(extracommand)
         }
+        
+        if (command === state[combatState].config.command) {
+            log('In Combat Tracker')
+			if (extracommand === 'next') {
+				if (!getTurnorder().length) return;
 
+				if(playerIsGM(msg.playerid) || msg.playerid === 'api'){
+					NextTurn();
+					return;
+				}
+			}
+			if (extracommand === 'delay') {
+				if (!getTurnorder().length) return;
 
-        if(!condition.icon){
-            makeAndSendMenu('Condition ' + condition.name + ' added to ' + token.get('name'));
+				if(playerIsGM(msg.playerid) || msg.playerid === 'api'){
+					delayTurn();
+					return;
+				}
+			}
+			
+			// Below commands are only for GM's
+			if (!playerIsGM(msg.playerid)) return;
+//			if (!extracommand) return;
+			
+//			let name, duration, direction, message, condition;
+
+			switch (extracommand) {
+// 				case 'help':
+// 					sendHelpMenu();
+// 				break;
+				case 'reset':
+						state[combatState] = {};
+						state[statusState] = {};
+						setDefaults(true);
+						sendConfigMenu();
+				break;
+				case 'config':
+					editCombatState(args)              
+				break;
+				case 'tracker':
+					sendConfigMenu();
+				break;				
+				case 'sort':
+					sortTurnorder();
+				break;
+				case 'prev':
+					PrevTurn();
+				break;
+				case 'start':
+					startCombat(msg.selected, args);
+				break;
+				case 'stop':
+					stopCombat();
+					if(args.shift() === 'b') sendTrackerMenu();
+				break;
+				case 'st':
+					stopTimer();
+					if(args.shift() === 'b') sendTrackerMenu();
+				break;
+				case 'pt':
+					pauseTimer();
+					if(args.shift() === 'b') sendTrackerMenu();
+				break;
+				case 'all':
+					editFavoriteState('All');
+					if(args.shift() === 'b') sendTrackerMenu();
+				break;	
+				case 'fav':
+					editFavoriteState('Favorites');
+					if(args.shift() === 'b') sendTrackerMenu();
+				break;						
+//				case 'conditions':
+//					sendConditionsMenu();
+//				break;
+				// case 'show': {
+				// 	if(!msg.selected || !msg.selected.length){
+				// 		makeAndSendMenu('No tokens are selected.', '', 'gm');
+				// 		return;
+				// 	}
+
+				// 	let tokens = msg.selected.map(s => getObj('graphic', s._id));
+
+				// 	sendTokenConditionMenu(tokens, (args.shift() === 'p'));
+				// }
+				break;
+				case 'add':
+				    addCommand(msg, args)
+				break;    
+				case 'remove': {
+					removeCommand(msg, args)
+				}
+				break;
+
+// 				case 'showcondition': {
+// 					let cname = args.shift();
+// 					let tokenid = args.shift();
+// 					let token;
+
+// 					if(!cname){
+// 						makeAndSendMenu('No condition was given.', '', 'gm');
+// 						return;
+// 					}
+
+// 					if(tokenid){
+// 						token = getObj('graphic', tokenid);
+// 						if(token){
+// 							showCondition(token, cname);
+// 						}
+// 					}
+// 				}
+// 				break;
+
+				default:
+				log('default')
+					sendTrackerMenu();
+				break;
+			}
+		}	
+		
+        if (command === state[statusState].config.command) {
+            switch(extracommand) {
+                case 'reset':
+                    if(!playerIsGM(msg.playerid)) return;
+
+                    state[statusState] = {};
+                    setDefaults(true);
+                    sendConfigMenu();
+                break;
+                case 'config':
+                    if(args.length > 0){
+                          editStatusState(args)
+                    } else {
+                        sendStatusMenu()
+                    }
+                    
+                break;
+                case 'config-conditions':
+                    let condition = args.shift();
+
+                    if (debug) {
+                        log('Conditions Config')
+                        log('Condition Key:'+condition)
+                    }
+                    
+                    if(condition === 'add'){
+						createCondition(condition)
+                    } else if (condition === 'remove'){
+						deleteCondition(condition)
+                    } else if (state[statusState].conditions[condition]) {
+						editCondition(args, condition)
+                    } else {
+						sendConditionsMenu();
+					}	
+                break;
+                case 'favorite':
+                    editFavoriteConditon(args)
+                break;
+                default:
+                break;
+            }
+        }		
+    },
+
+    //this
+    addCommand = (msg, args) => {
+        let	name        = args.shift().toLowerCase(),
+            duration    = args.shift() || 0,
+            direction   = args.shift() || 0,
+            message     = args.join(' ')
+
+        if (debug) {
+            log('Add Command')
+            log('Name:' + name)
+            log('Duration:' + duration)
+            log('Direction:' + direction)
+            log('Message:'+ message)            
+        }
+        //loop through selected tokens
+        if (msg.selected) {
+        	msg.selected.forEach(select => {
+                if (debug) {
+                    log('ID:' + select._id)
+                    log('Type:' + select._type)
+                } 
+        	    //call add condition passint ing token, name and other parameters
+    			addCondition(getObj(select._type, select._id), name, duration, direction, message)    
+        	});	 	
+        } else {
+            makeAndSendMenu('No tokens were selected.', '', 'gm');
+        }   
+    },
+  
+     removeCommand = (msg, args) => {
+        let	name        = args.shift().toLowerCase()
+
+        if (debug) {
+            log('Remove Command')
+            log('Name:' + name)
+        }
+        
+        //loop through selected tokens
+        if (msg.selected) {
+        	msg.selected.forEach(select => {
+                if (debug) {
+                    log('ID:' + select._id)
+                    log('Type:' + select._type)
+                } 
+        	    //call add condition passint ing token, name and other parameters
+    			removeCondition(getObj(select._type, select._id), name)    
+        	});	 	
+        }	
+    },
+       
+    addCondition = (token, name, duration, direction, message) => {
+	    let	defaultCondition, combatCondition, newCondition = {}
+
+        if (debug) {
+            log('Add Condition')
+            log('Token:' + token.get("_id"))
+            log('Name:'+name)
+            log('Duration:'+duration)
+            log('Direction:'+direction)
+        } 
+	        
+	    //verify incomming command     
+        if (verifyCondition(token.get("_id"), name)) {
+            //remove existing condition on token
+            removeCondition(token, name);   
+            //setup the new condition from input and get the defaults
+            defaultCondition = getConditionByKey(name)
+            //default values.  If override is false then also use default values
+            newCondition.name = defaultCondition.name.toLowerCase()
+            newCondition.icon = defaultCondition.icon
+            
+            if (defaultCondition.override && duration) {
+                newCondition.duration = parseInt(duration)
+            }
+            if (defaultCondition.override && direction) {
+                newCondition.direction = parseInt(direction)
+            }
+            //name is used within combat state to compare against in coming requests.  Needs to be lower case
+            if (debug) {
+                log('Duration:' + newCondition.duration)
+                log('Direction:' + newCondition.direction)
+            }    
+            //initialize combat state for this token
+            if (state[combatState].conditions[token.get("_id")] == undefined) {
+                state[combatState].conditions[token.get("_id")] = []
+            }
+            //push condition to combattracker
+            state[combatState].conditions[token.get("_id")].push(newCondition)
+            //set icon on token
+            if (newCondition.name == 'dead' || newCondition.duration <= 1) {
+                token.set('status_'+newCondition.icon, true);
+            } else {   
+                token.set('status_'+newCondition.icon,newCondition.duration);
+            }  
+            
+            if (state[statusState].config.showConditions) {
+                sendConditionToChat(defaultCondition)
+            }    
+            if (debug) {
+                log('Combat Conditions')
+                state[combatState].conditions[token.get("_id")].forEach(condition => {
+                    log(condition)
+                })
+            } 
         }    
     },
 
-    removeCondition = (token, condition_name, auto=false) => {
-        if(!state[state_name].conditions[strip(token.get('id')).toLowerCase()]) return;
-
-        let si_condition = false;
-        if(extensions.StatusInfo){
-            si_condition = StatusInfo.getConditionByName(condition_name) || false;
+    removeCondition = (token, name) => {
+        let i, condition
+        
+        if (debug) {
+            log('Remove Condition')
+            log('Token:' + token.get("_id"))
+            log('Name:'+name)
+            
+        } 
+        
+        if (state[combatState].conditions[token.get("_id")] == undefined) {
+            state[combatState].conditions[token.get("_id")] = []
         }
-
-        state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach((condition, i) => {
-            if(condition.name.toLowerCase() !== condition_name.toLowerCase()) return;
-
-            state[state_name].conditions[strip(token.get('id')).toLowerCase()].splice(i, 1);
-
-            if(si_condition){
-                token.set('status_'+condition.icon, false);
-            }else if(!auto){
-                makeAndSendMenu('Condition ' + condition.name + ' removed from ' + token.get('name'));
-            }
-        });
+        
+        // verify
+        if (verifyCondition(token.get("_id"), name)) {
+            //loop through token conditions
+            state[combatState].conditions[token.get("_id")].forEach((condition, i) => {
+                if (condition.name.toLowerCase() == name) {
+                    log('Name:'+name)
+                    log('Key:' + i)
+                    state[combatState].conditions[token.get('_id')].splice(i, 1);
+                    token.set('status_'+condition.icon, false);   
+                }
+            })
+        }    
+        if (debug) {
+            log('Combat Conditions')
+            state[combatState].conditions[token.get("_id")].forEach(condition => {
+                log(condition)
+            })
+        }         
     },
-
-    showCondition = (token, condition_name) => {
-        if(!state[state_name].conditions[strip(token.get('id')).toLowerCase()]) return;
-
-        let si_condition = false;
-        if(extensions.StatusInfo){
-            si_condition = StatusInfo.getConditionByName(condition_name) || false;
-        }
-
-        state[state_name].conditions[strip(token.get('id')).toLowerCase()].forEach((condition, i) => {
-            if(condition.name.toLowerCase() !== condition_name.toLowerCase()) return;
-
-            if(si_condition){
-                StatusInfo.sendConditionToChat(si_condition);
-            }
-            if(condition.message) makeAndSendMenu(condition.message, condition.name, '');
-        });
+    
+    verifyCondition  = (tokenID, name)  => {
+        // if (debug) {
+        //     log('Verify Condition')
+        //     log('Token:' + tokenID)
+        // }
+        //must have a name
+		if (!name) {
+			makeAndSendMenu('No condition name was given.', '', 'gm');
+			return false;
+		}
+		//must have a token		
+		if (!tokenID || !tokenID.length) {		
+			makeAndSendMenu('No tokens were selected.', '', 'gm');
+			return false;
+        }	
+        return true;
     },
+    
+    // showCondition = (token, condition_name) => {
+    //     if(!state[combatState].conditions[strip(token.get('id')).toLowerCase()]) return;
+
+    //     let si_condition = false;
+    //     if(extensions.StatusInfo){
+    //         si_condition = StatusInfo.getConditionByKey(condition_name) || false;
+    //     }
+
+    //     state[combatState].conditions[strip(token.get('id')).toLowerCase()].forEach((condition, i) => {
+    //         if(condition.name.toLowerCase() !== condition_name.toLowerCase()) return;
+
+    //         if(si_condition){
+    //             StatusInfo.sendConditionToChat(si_condition);
+    //         }
+    //         if(condition.message) makeAndSendMenu(condition.message, condition.name, '');
+    //     });
+    // },
 
     strip = (str) => {
         return str.replace(/[^a-zA-Z0-9]+/g, '_');
     },
 
-    handleTurnorderChange = (obj, prev) => {
-        if(obj.get('turnorder') === prev.turnorder) return;
-
-        let turnorder = (obj.get('turnorder') === "") ? [] : JSON.parse(obj.get('turnorder'));
-        let prevTurnorder = (prev.turnorder === "") ? [] : JSON.parse(prev.turnorder);
-
-        if(obj.get('turnorder') === "[]"){
-            resetMarker();
-            stopTimer();
-            return;
-        }
-
-        if(turnorder.length && prevTurnorder.length && turnorder[0].id !== prevTurnorder[0].id){
-            doTurnorderChange();
-        }
-    },
-
-    handleStatusMarkerChange = (obj, prev) => {
-        if(extensions.StatusInfo){
-            prev.statusmarkers = (typeof prev.get === 'function') ? prev.get('statusmarkers') : prev.statusmarkers;
-
-            if(obj.get('statusmarkers') !== prev.statusmarkers){
-                let nS = obj.get('statusmarkers').split(','),
-                    oS = prev.statusmarkers.split(',');
-
-                // Marker added?
-                array_diff(oS, nS).forEach(icon => {
-                    if(icon === '') return;
-
-                    getObjects(StatusInfo.getConditions(), 'icon', icon).forEach(condition => {
-                        addCondition(obj, { name: condition.name });
-                    });
-                });
-
-                // Marker Removed?
-                array_diff(nS, oS).forEach(icon => {
-                    if(icon === '') return;
-
-                    getObjects(StatusInfo.getConditions(), 'icon', icon).forEach(condition => {
-                        removeCondition(obj, condition.name);
-                    });
-                });
-            }
-        }
-    },
-
-    handleGraphicMovement = (obj /*, prev */) => {
-        if(!inFight()) return;
-
-        if(getCurrentTurn().id === obj.get('id')){
-            changeMarker(obj);
-        }
-
-        if(getNextTurn().id === obj.get('id')){
-            changeMarker(obj, true);
-        }
-    },
-
-    array_diff = (a, b) => {
-        return b.filter(function(i) {return a.indexOf(i) < 0;});
-    },
-
-    //return an array of objects according to key, value, or key and value matching
-    getObjects = (obj, key, val) => {
-        var objects = [];
-        for (var i in obj) {
-            if (!obj.hasOwnProperty(i)) continue;
-            if (typeof obj[i] == 'object') {
-                objects = objects.concat(getObjects(obj[i], key, val));    
-            } else 
-            //if key matches and value matches or if key matches and value is not passed (eliminating the case where key matches but passed value does not)
-            if (i == key && obj[i] == val || i == key && val == '') { //
-                objects.push(obj);
-            } else if (obj[i] == val && key == ''){
-                //only add if the object is not already in the array
-                if (objects.lastIndexOf(obj) == -1){
-                    objects.push(obj);
-                }
-            }
-        }
-        return objects;
-    },
-
-    startCombat = (selected) => {
-        paused = false;
-        resetMarker();
-        Campaign().set('initiativepage', Campaign().get('playerpageid'));
-
-        if(selected && state[state_name].config.turnorder.throw_initiative){
-            rollInitiative(selected, state[state_name].config.turnorder.auto_sort);
+    startCombat = (selectedTokens, args) => {
+        let verified=false
+        
+        if (debug) {
+            log('Start Combat')
+            log(selectedTokens)
         }
         
-        doTurnorderChange();
-    },
-
-    inFight = () => {
-        return (Campaign().get('initiativepage') !== false);
-    },
-
-    rollInitiative = (selected, sort) => {
-        let config = state[state_name].config;
-
-        selected.forEach(s => {
-            if(s._type !== 'graphic') return;
-
-            let token = getObj('graphic', s._id),
-                whisper = (token.get('layer') === 'gmlayer') ? 'gm ' : '',
-                bonus=0.0,
-                rollInit = (config.turnorder.ini_die) ? randomInteger(config.turnorder.ini_die) : 0;
-
-            if (token.get('represents') > "") { 
-                let character = getObj('character', token.get('represents')),
-                initAttributes = state[state_name].config.initiative_attribute_name.split(','),
-                init=0,
-                i=0;    
-
-                for (i=0;i<initAttributes.length;i++) {
-                    if (character != 'undefined') {
-                        init = getAttrByName(character.id,initAttributes[i],'current') 
-                        bonus = bonus + parseFloat(init)
-                    }    
-                } 
-                
-                let rollAdvantage = getAttrByName(character.id, 'initiative_style', 'current');
-                if (rollAdvantage) {
-                    if (rollAdvantage == '{@{d20},@{d20}}kh1') {
-                        let rollInit1 = randomInteger(20) 
-                        let rollInit2 = randomInteger(20) 
-                        if (rollInit1 >= rollInit2) {
-                            rollInit = rollInit1
-                        } else {
-                            rollInit = rollInit2
-                        }
-                        if(state[state_name].config.turnorder.show_initiative_roll){
-                            let contents = ' \
-                               <table style="width: 50%; text-align: left; float: left;"> \
-                                    <tr> \
-                                        <th>Modifier</th> \
-                                        <td>'+bonus+'</td> \
-                                    </tr> \
-                                </table> \
-                                <div style="text-align: center"> \
-                                    <b style="font-size: 14pt;"> \
-                                        <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit1+'+'+bonus+']]</span><br><br> \
-                                    </b> \
-                                </div> \
-                                <div style="text-align: center"> \
-                                    <b style="font-size: 10pt;"> \
-                                        <span style="border: 1px solid red; padding-bottom: 2px; padding-top: 4px;">[['+rollInit2+'+'+bonus+']]</span><br><br> \
-                                    </b> \
-                                </div>'                                
-                            makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
-                        }
-                    } else if(state[state_name].config.turnorder.show_initiative_roll) { 
-                        
-                        let contents = ' \
-                        <table style="width: 100%; text-align: left;"> \
-                            <tr> \
-                                <th>Modifier</th> \
-                                <td>'+bonus+'</td> \
-                            </tr> \
-                        </table> \
-                        <div style="text-align: center"> \
-                            <b style="font-size: 16pt;"> \
-                                <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
-                            </b> \
-                        </div>'
-                        makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);                        
-                    }    
-                }  else if(state[state_name].config.turnorder.show_initiative_roll) { 
-                    let contents = ' \
-                    <table style="width: 100%; text-align: left;"> \
-                        <tr> \
-                            <th>Modifier</th> \
-                            <td>'+bonus+'</td> \
-                        </tr> \
-                    </table> \
-                    <div style="text-align: center"> \
-                        <b style="font-size: 16pt;"> \
-                            <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
-                        </b> \
-                    </div>'
-                    makeAndSendMenu(contents, token.get('name') + ' Initiative', whisper);
-                }   
-                addToTurnorder({ id: token.get('id'), pr: rollInit+bonus, custom: '', pageid: token.get('pageid') });
-            }   
-            
-        });
-
-        if(sort){
-            sortTurnorder();
+        verified = verifySetup(selectedTokens)
+        
+        if (!verified) {
+            return;
         }
-    },
-
-    stopCombat = () => {
-        if(timerObj) timerObj.remove();
-        removeMarkers();
-        stopTimer();
+        
         paused = false;
-        Campaign().set({
-            initiativepage: false,
-            turnorder: ''
-        });
-        state[state_name].turnorder = {};
-        round = 1;
-    },
+//        resetMarker();
+       
+        Campaign().set('initiativepage', Campaign().get('playerpageid'));
 
-    clearTurnorder = () => {
-        Campaign().set({ turnorder: '' });
-        state[state_name].turnorder = {};
+        if(state[combatState].config.turnorder.throw_initiative){
+            rollInitiative(selectedTokens);
+        }
+        
+        sendTrackerMenu();
+ //       doTurnorderChange();
     },
+    
+    verifySetup = (selectedTokens) => {
+        let initAttributes, attribute, whisper, character, verified=true, i, tokenObj
+ 
+        if (!selectedTokens || selectedTokens.length == 0) {
+            makeAndSendMenu('No tokens selected.  Combat not started',' ', whisper);   
+            verified=false             
+            return
+        }
+        
+        selectedTokens.forEach(token => {
 
-    removeMarkers = () => {
-        stopRotate();
-        getOrCreateMarker().remove();
-        getOrCreateMarker(true).remove();
+            tokenObj        = getObj('graphic', token._id)
+            whisper         = (tokenObj.get('layer') === 'gmlayer') ? 'gm ' : ''
+            character       = getObj('character', tokenObj.get('represents'))
+            initAttributes  = state[combatState].config.initiative_attribute_name.split(',')
+            
+            if (typeof tokenObj == 'undefined') {
+                makeAndSendMenu('A non graphical token was found.  Combat not started',' ', whisper);   
+                verified=false                
+            }
+                
+            if (typeof character == 'undefined') {
+                makeAndSendMenu('A token was found not assigned to a character sheet',' ', whisper);   
+//                verified=false
+            }
+
+            for (i=0;i<initAttributes.length;i++) {
+                if (typeof character != 'undefined') {
+                    attribute    = getAttrByName(character.id,initAttributes[i],'current') 
+                    if (typeof attribute == 'undefined') {
+                        makeAndSendMenu('Initiative Attribute ' + initAttributes[i] + ' not found on character sheet',' ', whisper);  
+                        verified=false
+                    }    
+                }    
+            } 
+        })    
+        
+        return verified
     },
 
     resetMarker = (next=false) => {
         let marker = getOrCreateMarker(next);
+        
+        if (debug) {
+            log('Reset Marker')
+        }
         marker.set({
             name: (next) ? 'NextMarker' : 'Round ' + round,
-            imgsrc: (next) ? state[state_name].config.next_marker_img : state[state_name].config.marker_img,
+            imgsrc: (next) ? state[combatState].config.next_marker_img : state[combatState].config.marker_img,
             pageid: Campaign().get('playerpageid'),
             layer: 'gmlayer',
             left: 35, top: 35,
@@ -699,67 +538,249 @@ var CombatTracker = CombatTracker || (function() {
         return marker;
     },
 
+    getOrCreateMarker = (next=false, pageid=Campaign().get('playerpageid')) => {
+        let marker, markers,
+            imgsrc = (next) ? state[combatState].config.next_marker_img : state[combatState].config.marker_img
+
+        // if (debug) {
+        //     log('Get or Create Marker')
+        // }
+        
+        if (next) {
+            markers = findObjs({
+                pageid,
+                imgsrc,
+                name: 'NextMarker'
+            });
+
+        } else {
+            markers = findObjs({
+                pageid,
+                imgsrc
+            });
+        }
+        
+        markers.forEach((marker, i) => {
+            if(i > 0 && !next && marker.get('name') !== 'NextMarker') marker.remove();
+        });
+
+        marker = markers.shift();
+        
+        // if (debug) {
+        //     log('Marker:' + marker)
+        // }
+        
+        if(!marker) {
+            marker = createObj('graphic', {
+                name: (next) ? 'NextMarker' : 'Round 0',
+                imgsrc,
+                pageid,
+                layer: 'gmlayer',
+                showplayers_name: true,
+                left: 35, top: 35,
+                width: 70, height: 70
+            });
+        }
+        
+        if(!next) checkMarkerturn(marker);
+        
+        toBack(marker);
+
+        return marker;
+    },
+    
+    inFight = () => {
+        return (Campaign().get('initiativepage') !== false);
+    },
+
+    rollInitiative = (selectedTokens) => {
+        let tokenObj, whisper, initiativeTemp, initiativeRoll, characterObj, initAttributes, initiativeMod, i, advantageAttrib, initiativeAdv1, initiativAdv2
+        
+        //loop through selected tokens
+        selectedTokens.forEach(token => {
+            // get token and character objects
+            tokenObj        = getObj('graphic', token._id)
+            characterObj    = getObj('character', tokenObj.get('represents'))
+            // roll initiative only for tokens assigned to character sheets
+            if (typeof characterObj != 'undefined') {
+                whisper         = (tokenObj.get('layer') === 'gmlayer') ? 'gm ' : ''
+                initiativeRoll  = (state[combatState].config.turnorder.ini_die) ? randomInteger(state[combatState].config.turnorder.ini_die) : 0;
+                initAttributes  = state[combatState].config.initiative_attribute_name.split(',')
+                initiativeMod   = 0
+                // loop through commma delimited list of attributes (usually only one) to determine the initiative modifier
+                for (i=0;i<initAttributes.length;i++) {
+                    initiativeTemp  = getAttrByName(characterObj.id,initAttributes[i],'current') 
+                    initiativeMod  += parseFloat(initiativeTemp)
+                }
+                //check for advantage initiative rolling (OGL)
+                advantageAttrib   = getAttrByName(characterObj.id, 'initiative_style', 'current');  
+                if (typeof advantageAttrib != 'undefined') {
+                    // roll advantage for initiative
+                    initiativeAdv1 = (state[combatState].config.turnorder.ini_die) ? randomInteger(state[combatState].config.turnorder.ini_die) : 0; 
+                    initiativeAdv2 = (state[combatState].config.turnorder.ini_die) ? randomInteger(state[combatState].config.turnorder.ini_die) : 0;
+                    // this is the value if in OGL if rolling advantage
+                    if (advantageAttrib == '{@{d20},@{d20}}kh1') {
+                        //determine which value is higher
+                        if (initiativeAdv1 >= initiativeAdv2) {
+                            initiativeRoll = initiativeAdv1
+                        } else {
+                            initiativeRoll = initiativeAdv2
+                        }
+                        //pass in both values and modifier for display
+                        if (state[combatState].config.turnorder.show_initiative_roll){
+                            sendInitiativeChat(token.get('name'),initiativeAdv1,initiativeMod,initiativeAdv2,whisper)                            
+                        }
+                    } else if (state[combatState].config.turnorder.show_initiative_roll) { 
+                        // if not rolling advantage, use first roll
+                        initiativeRoll = initiativeRoll1
+                        sendInitiativeChat(token.get('name'),initiativeRoll1,initiativeMod,null,whisper)                              
+                    }    
+                }  else if (state[combatState].config.turnorder.show_initiative_roll) { 
+                    // if everything else then pass in for display
+                     sendInitiativeChat(token.get('name'),initiativeRoll,initiativeMod,null,whisper)   
+                }  
+                //add to turnorder 
+                log("Token Id:" + tokenObj.id)
+                log("Token Page:" + tokenObj.get("pageid"))
+                addToTurnorder({id:tokenObj.id,pr:initiativeMod+initiativeRoll,custom:'',pageid:tokenObj.get("pageid")});
+            }   
+        });
+        // sort turnorder if set
+        if(state[combatState].config.turnorder.auto_sort){
+            sortTurnorder();
+        }
+    },
+
+    sendInitiativeChat = (name,rollInit,bonus,rollInit1,whisper) => { 
+        let contents = ''
+        
+        if (rollInit1) {
+            contents = '<table style="width: 50%; text-align: left; float: left;"> \
+                            <tr> \
+                                <th>Modifier</th> \
+                                <td>'+bonus+'</td> \
+                            </tr> \
+                        </table> \
+                        <div style="text-align: center"> \
+                            <b style="font-size: 14pt;"> \
+                                <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
+                            </b> \
+                        </div> \
+                        <div style="text-align: center"> \
+                            <b style="font-size: 10pt;"> \
+                                <span style="border: 1px solid red; padding-bottom: 2px; padding-top: 4px;">[['+rollInit1+'+'+bonus+']]</span><br><br> \
+                            </b> \
+                        </div>'   
+        } else {
+             contents = '<table style="width: 50%; text-align: left; float: left;"> \
+                            <tr> \
+                                <th>Modifier</th> \
+                                <td>'+bonus+'</td> \
+                            </tr> \
+                        </table> \
+                        <div style="text-align: center"> \
+                            <b style="font-size: 14pt;"> \
+                                <span style="border: 1px solid green; padding-bottom: 2px; padding-top: 4px;">[['+rollInit+'+'+bonus+']]</span><br><br> \
+                            </b> \
+                        </div>'
+           
+        }  
+        
+        makeAndSendMenu(contents, name + ' Initiative', whisper);    
+    },
+    
+    stopCombat = () => {
+        if(timerObj) timerObj.remove();
+        removeMarkers();
+        stopTimer();
+        paused = false;
+        Campaign().set({
+            initiativepage: false,
+            turnorder: ''
+        });
+        state[combatState].turnorder = {};
+        round = 1;
+    },
+
+    clearTurnorder = () => {
+        Campaign().set({ turnorder: '' });
+        state[combatState].turnorder = {};
+    },
+
+    removeMarkers = () => {
+        stopRotate();
+        getOrCreateMarker().remove();
+        getOrCreateMarker(true).remove();
+    },
+
+
     doTurnorderChange = (prev=false) => {
-        if(!Campaign().get('initiativepage') || getTurnorder().length <= 1) return;
+        //if(!Campaign().get('initiativepage') || getTurnorder().length <= 1) return;
 
         let turn = getCurrentTurn();
-
-        if(turn.id === '-1'){ // If custom item.
-            if(turn.formula){
-                updatePR(turn, parseInt(turn.formula));
-            }
-
-            if(!state[state_name].config.turnorder.skip_custom) resetMarker();
-            else NextTurn();
+        
+        if(debug) {
+            log('Turn Order Change')
+            log('ID:' + turn.id)
+        }
+        if (turn.id === '-1') { 
+            // if (turn.formula) {
+            //     updatePR(turn, parseInt(turn.formula));
+            // }
+            if (!state[combatState].config.turnorder.skip_custom) {
+                resetMarker();
+            } else {
+                NextTurn();
+            }    
             return;
         }
-        if(turn.id === getOrCreateMarker().get('id')){
-            if(prev) PrevRound();
-            else NextRound();
+        
+        if (turn.id === getOrCreateMarker().get('id')) {
+            if (prev) {
+                PrevRound();
+            } else { 
+                NextRound();
+            }    
             return;
         }
 
         let token = getObj('graphic', turn.id);
 
-		if(token){
+		if (token) {
             toFront(token);
 
-            if(state[state_name].config.timer.use_timer){
+            if (state[combatState].config.timer.use_timer) {
                 startTimer(token);
             }
 
             changeMarker(token || false);
 
-            if(state[state_name].config.macro.run_macro){
-                let ability = findObjs({ _characterid: token.get('represents'), _type: 'ability', name: state[state_name].config.macro.macro_name })
+            if (state[combatState].config.macro.run_macro) {
+                let ability = findObjs({ _characterid: token.get('represents'), _type: 'ability', name: state[combatState].config.macro.macro_name })
                 if(ability && ability.length){
                     sendChat(token.get('name'), ability[0].get('action'), null, {noarchive:true} );
                 }
             }
 
-            if(state[state_name].config.announcements.announce_turn){
-                announceTurn(token || turn.custom, (token.get('layer') === 'objects') ? '' : 'gm');
-            }else if(state[state_name].config.announcements.announce_conditions){
-                let name = token.get('name') || turn.custom;
-                let conditions = getConditionString(token);
-                if(conditions && conditions !== '') makeAndSendMenu(conditions, 'Conditions - ' + name, (token.get('layer') === 'objects') ? '' : 'gm');
+            if (state[combatState].config.announcements.announce_turn) {
+                announcePlayer(token, (token.get('layer') === 'objects') ? '' : 'gm', prev);
+                //announcePlayer(token || turn.custom, (token.get('layer') === 'objects') ? '' : 'gm');
             }
-
+            
             Pull(token);
             doFX(token);
-        }else{
+        } else {
             resetMarker();
         }
 
-        if(state[state_name].config.next_marker){
+        if (state[combatState].config.next_marker) {
             let nextTurn = getNextTurn();
             let nextToken = getObj('graphic', nextTurn.id);
 
-            if(nextToken){
+            if (nextToken) {
                 toFront(nextToken);
-
                 changeMarker(nextToken || false, true);
-            }else{
+            } else {
                 resetMarker(true);
             }
         }
@@ -778,14 +799,14 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     doFX = (token) => {
-        if(!state[state_name].config.announcements.use_fx || token.get('layer') === 'gmlayer') return;
+        if(!state[combatState].config.announcements.use_fx || token.get('layer') === 'gmlayer') return;
 
         let pos = {x: token.get('left'), y: token.get('top')};
-        spawnFxBetweenPoints(pos, pos, state[state_name].config.announcements.fx_type, token.get('pageid'));
+        spawnFxBetweenPoints(pos, pos, state[combatState].config.announcements.fx_type, token.get('pageid'));
     },
 
     Pull = (token) => {
-        if(!state[state_name].config.pull) return;
+        if(!state[combatState].config.pull) return;
 
         sendPing(token.get('left'), token.get('top'), token.get('pageid'), null, true);
     },
@@ -795,15 +816,15 @@ var CombatTracker = CombatTracker || (function() {
         clearInterval(intervalHandle);
         if(timerObj) timerObj.remove();
 
-        let config_time = parseInt(state[state_name].config.timer.time); 
+        let config_time = parseInt(state[combatState].config.timer.time); 
         let time = config_time;
 
-        if(token && state[state_name].config.timer.token_timer){
+        if(token && state[combatState].config.timer.token_timer){
             timerObj = createObj('text', {
                 text: 'Timer: ' + time,
-                font_size: state[state_name].config.timer.token_font_size,
-                font_family: state[state_name].config.timer.token_font,
-                color: state[state_name].config.timer.token_font_color,
+                font_size: state[combatState].config.timer.token_font_size,
+                font_family: state[combatState].config.timer.token_font,
+                color: state[combatState].config.timer.token_font_color,
                 pageid: token.get('pageid'),
                 layer: 'gmlayer'
             });
@@ -819,14 +840,14 @@ var CombatTracker = CombatTracker || (function() {
                 layer: token.get('layer')
             });
 
-            if(state[state_name].config.timer.chat_timer && (time === config_time || config_time/2 === time || config_time/4 === time || time === 10 || time === 5)){
+            if(state[combatState].config.timer.chat_timer && (time === config_time || config_time/2 === time || config_time/4 === time || time === 10 || time === 5)){
                 makeAndSendMenu('', 'Time Remaining: ' + time);
             }
 
             if(time <= 0){
                 if(timerObj) timerObj.remove();
                 clearInterval(intervalHandle);
-                if(state[state_name].config.timer.auto_skip) NextTurn();
+                if(state[combatState].config.timer.auto_skip) NextTurn();
                 else if(token.get('layer') !== 'gmlayer') makeAndSendMenu(token.get('name') + "'s time ran out!", '');
             }
 
@@ -843,70 +864,113 @@ var CombatTracker = CombatTracker || (function() {
         paused = !paused;
     },
 
-    announceTurn = (token, target) => {
-        target = (state[state_name].config.announcements.whisper_turn_gm) ? 'gm' : target;
-
-        let name, imgurl;
-        if(typeof token === 'object'){
-            name = token.get('name');
-            imgurl = token.get('imgsrc');
-        }else{
-            name = token;
+    announcePlayer = (token, target, prev) => {
+        let name, imgurl, conditions, image, doneButton, delayButton, contents;
+        //set up components
+        target      = (state[combatState].config.announcements.whisper_turn_gm) ? 'gm' : target;
+        name        = token.get('name');
+        imgurl      = token.get('imgsrc');
+        conditions  = getAnnounceConditions(token, prev);
+        image       = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : ''
+        name        = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name,
+        doneButton  = makeImageButton('!ct next',doneImage,'Done with Round','transparent',18)
+        delayButton = makeImageButton('!ct delay',delayImage,'Delay your Turn','transparent',18);
+        //build announcement
+        contents    = '<div style="display:inline-block;vertical-aligh:middle">'+image+'</div>'
+        contents   += '<div style="display:inline-block;vertical-aligh:middle">'+name+'\'s Turn</div>'
+        contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+doneButton+'</div>'
+        contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+delayButton+'</div>'
+        
+        if (state[combatState].config.announcements.announce_turn) {
+            contents   += conditions
         }
-
-        let conditions = getConditionString(token);
-
-        let image = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : '';
-        name = (state[state_name].config.announcements.handleLongName) ? handleLongString(name) : name;
-
-        let contents = '\
-        <table> \
-          <tr> \
-            <td>'+image+'</td> \
-            <td style="padding-left: 5px;"><span style="font-size: 16pt;">'+name+'\'s Turn</span></td> \
-          </tr> \
-        </table> \
-        <div style="overflow: hidden"> \
-          <div style="float: left">'+conditions+'</div> \
-          ' + makeButton('Done', '!'+state[state_name].config.command+' next', styles.button + styles.float.right) +' \
-        </div>';
+        //send announcement
         makeAndSendMenu(contents, '', target);
     },
 
-   getConditionString = (token) => {
-       let name = strip(token.get('id')).toLowerCase();
-       let conditionsSTR = '';
+    getAnnounceConditions = (token, prev) => {
+        let output = ' '
+        if (debug) {
+            log('Announce Condition') 
+            log('Token ID:' + token.get("_id"))
+        }
+        
+        if (state[combatState].conditions[token.get("_id")] == undefined) {
+            log ("wiping out conditions")
+            state[combatState].conditions[token.get("_id")] = []
+        }
 
-       if(state[state_name].conditions[name] && state[state_name].conditions[name].length){
-           for(let i = 0; i < state[state_name].conditions[name].length; i++){
-               let condition = state[state_name].conditions[name][i];
-               if(typeof condition.duration === 'undefined' || condition.duration === false){
-                   conditionsSTR += '<strong>'+condition.name+'</strong><br>';
-               }else if(condition.duration <= 1 && condition.direction != 0){
-                   conditionsSTR += '<strong>'+condition.name+'</strong> removed.<br>';
-                   removeCondition(token, condition.name, true);
-                   i--;
-               } else {
-                   state[state_name].conditions[name][i].duration = parseInt(state[state_name].conditions[name][i].duration)+parseInt(condition.direction);
-                   conditionsSTR += '<strong>'+condition.name+'</strong>: ' + condition.duration + '<br>';
-               }
-               conditionsSTR += (condition.message) ? '<em style="font-size: 10pt">'+condition.message+'</em><br>' : '';
-           }
-       }
-       return conditionsSTR;
-   },
+        state[combatState].conditions[token.get("_id")].forEach((condition) => {
+            output  =  '<div>'
+            if (debug) {
+                log('Condition Name:' +condition.name)
+                log('Duration:' +condition.duration)
+                log('Direction:' +condition.direction)
+            }            
+            
+            if (!prev) {
+                condition.duration = condition.duration + condition.direction
+            } else {
+                condition.duration = condition.duration - condition.direction
+            }
+            
+            if (condition.duration == 0 && condition.direction != 0) {
+                output += '<strong>'+condition.name+'</strong> removed.';
+                removeCondition(token, condition.name);  
+            } else if (condition.duration > 0 && condition.direction != 0) {
+                output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Rounds Left';
+                token.set('status_'+condition.icon, condition.duration);
+            } else if (condition.direction == 0) {
+                output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Permanent (until removed)';
+            }    
+            
+            if (debug) {
+                log('Combat Conditions')
+                log(condition)
+            }
+
+            // token.set('status_'+defaultCondition.icon, parseInt(defaultCondition.duration));
+            // token.set('status_'+condition.icon, false);   
+            
+            output += '</div>'
+        })
+
+      return output;
+  },
 
     handleLongString = (str, max=8) => {
         str = str.split(' ')[0];
         return (str.length > max) ? str.slice(0, max) + '...' : str;
     },
 
+    delayTurn = () => {
+        let turnorder, currentTurn, nextTurn, dummy
+        //get turnorder and remove top two turns
+        turnorder   = getTurnorder(),
+        currentTurn = turnorder.shift();
+        nextTurn    = turnorder.shift();
+        if (debug) {
+            log('Delay Turn')
+            log('Current:' + currentTurn)
+            log('Next:'+nextTurn)
+        }
+        turnorder.unshift(currentTurn)
+        turnorder.unshift(nextTurn)
+
+//        turnorder.unshift(nextTurn)
+        //set the turnorder and move the marker
+        setTurnorder(turnorder);
+        doTurnorderChange();
+    },
+    
     NextTurn = () => {
-        let turnorder = getTurnorder(),
-            current_turn = turnorder.shift();
-
-        turnorder.push(current_turn);
-
+        let turnorder, currentTurn
+        //get turnorder and remove top turn
+        turnorder = getTurnorder(),
+        currentTurn = turnorder.shift();
+        //add current turn to bottom
+        turnorder.push(currentTurn);
+        //set the turnorder and move the marker
         setTurnorder(turnorder);
         doTurnorderChange();
     },
@@ -925,18 +989,19 @@ var CombatTracker = CombatTracker || (function() {
         round++;
         marker.set({ name: 'Round ' + round});
 
-        if(state[state_name].config.announcements.announce_round){
-            let text = '<span style="font-size: 16pt; font-weight: bold;">'+marker.get('name')+'</span>';
-            makeAndSendMenu(text);
+        if(state[combatState].config.announcements.announce_round){
+            let text = '<span style="font-size: 12pt; font-weight: bold;">'+marker.get('name')+'</span>';
+            makeAndSendMenu(text, ' ');
         }
 
-        if(state[state_name].config.turnorder.reroll_ini_round){
+        if(state[combatState].config.turnorder.reroll_ini_round){
             let turnorder = getTurnorder();
             clearTurnorder();
-            rollInitiative(turnorder.map(t => { return (t.id !== -1 && t.id !== marker.get('id')) ? { _type: 'graphic', _id: t.id } : false }), state[state_name].config.turnorder.auto_sort);
+            rollInitiative(turnorder.map(t => { return (t.id !== -1 && t.id !== marker.get('id')) ? { _type: 'graphic', _id: t.id } : false }), state[combatState].config.turnorder.auto_sort);
             sortTurnorder();
         }else{
             NextTurn();
+            sortTurnorder();
         }
     },
 
@@ -945,7 +1010,7 @@ var CombatTracker = CombatTracker || (function() {
         round--;
         marker.set({ name: 'Round ' + round});
 
-        if(state[state_name].config.announcements.announce_round){
+        if(state[combatState].config.announcements.announce_round){
             let text = '<span style="font-size: 16pt; font-weight: bold;">'+marker.get('name')+'</span>';
             makeAndSendMenu(text);
         }
@@ -956,6 +1021,10 @@ var CombatTracker = CombatTracker || (function() {
     changeMarker = (token, next=false) => {
         let marker = getOrCreateMarker(next);
 
+        // if (debug) {
+        //     log('Change Marker')
+        //     log('Marker:' + marker)
+        // }
         if(!token){
             resetMarker(next);
             return;
@@ -989,67 +1058,6 @@ var CombatTracker = CombatTracker || (function() {
         toBack(marker);
     },
 
-    getOrCreateMarker = (next=false, pageid=Campaign().get('playerpageid')) => {
-        let marker, markers,
-            imgsrc = (next) ? state[state_name].config.next_marker_img : state[state_name].config.marker_img
-
-        if(next){
-            markers = findObjs({
-                pageid,
-                imgsrc,
-                name: 'NextMarker'
-            });
-
-        }else{
-            markers = findObjs({
-                pageid,
-                imgsrc
-            });
-        }
-
-        markers.forEach((marker, i) => {
-            if(i > 0 && !next && marker.get('name') !== 'NextMarker') marker.remove();
-        });
-
-        marker = markers.shift();
-        if(!marker) {
-            marker = createObj('graphic', {
-                name: (next) ? 'NextMarker' : 'Round 0',
-                imgsrc,
-                pageid,
-                layer: 'gmlayer',
-                showplayers_name: true,
-                left: 35, top: 35,
-                width: 70, height: 70
-            });
-        }
-        if(!next) checkMarkerturn(marker);
-        toBack(marker);
-
-        //marker.set({ layer: 'gmlayer' });
-
-        //startRotate(marker);
-
-        return marker;
-    },
-
-/*
-    startRotate = (token) => {
-        clearInterval(rotationInterval);
-
-        let i = 0;
-        rotationInterval = setInterval(() => {
-            i += 2;
-
-            log(i);
-
-            if(i >= 360) i = 0;
-
-            token.set('rotation', i);
-        }, 50);
-    },
-*/
-
     stopRotate = () => {
         clearInterval(rotationInterval);
     },
@@ -1057,6 +1065,11 @@ var CombatTracker = CombatTracker || (function() {
     checkMarkerturn = (marker) => {
         let turnorder = getTurnorder(),
             hasTurn = false;
+        
+        // if (debug) {
+        //     log ('Check Marker Turn')
+        // }    
+        
         turnorder.forEach(turn => {
             if(turn.id === marker.get('id')) hasTurn = true;
         });
@@ -1098,20 +1111,24 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     addToTurnorder = (turn) => {
-		if(!turn){
-			return;
-		}
-
         let turnorder = getTurnorder(),
             justDoIt = true;
-        turnorder.forEach(t => {
-            if(t.id === turn.id) justDoIt = false;
-        });
 
-        if(justDoIt){
+        if (debug) {
+            log('Add to Turnorder')
+        }
+        
+        // turnorder.forEach(t => {
+        //     if (debug){
+        //         log('Turn:' + t)
+        //     }            
+        //     if(t.id === turn.id) justDoIt = false;
+        // });
+
+        // if(justDoIt){
             turnorder.push(turn);
             setTurnorder(turnorder);
-        }
+        // }
     },
 
     setTurnorder = (turnorder) => {
@@ -1121,351 +1138,638 @@ var CombatTracker = CombatTracker || (function() {
     randomBetween = (min, max) => {
         return Math.floor(Math.random()*(max-min+1)+min);
     },
+	
+	editCombatState = (args) => {
+		if(args[1]){
+			let setting = args[1].split('|');
+			let key = setting.shift();
+			let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];		
+			
+			if(args[0] === 'combat'){
+				state[combatState].config[key] = value;
+			}
+			
+			if(args[0] === 'timer'){
+				state[combatState].config.timer[key] = value;
+			}
+			
+			if (args[0] === 'turnorder'){
+				if(key === 'ini_die') {
+					value = parseInt(value);
+				}
+				state[combatState].config.turnorder[key] = value;
+			}	
+			
+			if (args[0] === 'announcements'){
+				state[combatState].config.announcements[key] = value;
+			}
+			
+			if (args[0] === 'macro'){
+				state[combatState].config.macro[key] = value;
+			}
+		}	
 
-    sendTokenConditionMenu = (tokens, toPlayers) => {
-        let contents = '<table style="width: 100%;">';
+		if(args[0] === 'combat'){
+			sendCombatMenu();
+		} else if(args[0] === 'timer'){
+			sendTimerMenu();
+		} else if (args[0] === 'turnorder'){
+			sendTurnorderMenu();
+		} else if (args[0] === 'announcements'){
+			sendAnnounceMenu();
+		} else if (args[0] === 'macro'){
+			sendMacroMenu();
+		} else {
+			sendConfigMenu();
+		}		
+	},
 
-        let i = 0;
-        tokens.forEach(token => {
-            if(!token) return;
-
-            let conditions = state[state_name].conditions[strip(token.get('id')).toLowerCase()];
-
-            if(i) contents += '<tr><td colspan="2"><hr></td></tr>';
-            i++;
-
-            contents += ' \
-                <tr> \
-                    <td colspan="2" style="font-size: 12pt; font-weight: bold;"> \
-                        <img src='+token.get('imgsrc')+' style="width: 32px; height: 32px; vertical-align: middle;" /> \
-                        <span style="vertical-align: middle;">'+token.get('name')+'</span> \
-                    </td> \
-                </tr>';
-
-            if(!conditions || !conditions.length){
-                contents += '<tr><td colspan="2" style="text-align: center;"><i>None</i></td></tr>';
-            }else{
-                conditions.forEach(condition => {
-                    let si_condition = false;
-                    if(extensions.StatusInfo){
-                        si_condition = StatusInfo.getConditionByName(condition.name) || false;
-                    }
-
-                    let removeButton = makeButton('<img src="https://s3.amazonaws.com/files.d20.io/images/11381509/YcG-o2Q1-CrwKD_nXh5yAA/thumb.png?1439051579" />', '!'+state[state_name].config.command + ' remove ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;');
-                    let showButton = (condition.message || si_condition) ? makeButton('<img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699008-icon-22-eye-128.png" />', '!'+state[state_name].config.command + ' showcondition ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;') : '';
-                    let name = condition.name;
-                    name += (condition.duration) ? ' (' + condition.duration + ')' : '';
-                    contents += ' \
-                    <tr> \
-                        <td style="text-align: center">'+name+'</td> \
-                        <td>'+removeButton+showButton+'</td> \
-                    </tr>';
-                });
-            }
-        });
-
-        contents += '</table>';
-
-        makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
-    },
-
-    sendConditionsMenu = () => {
-        let addButton;
-
-        let SI_listItems = [];
-        if(extensions.StatusInfo){
-            Object.keys(StatusInfo.getConditions()).map(key => StatusInfo.getConditions()[key]).forEach(condition => {
-                let conditionSTR = condition.name + ' ?{Duration} ?{Direction|-1} ?{Message}';
-                addButton = makeButton(StatusInfo.getIcon(condition.icon, 'margin-right: 5px; margin-top: 5px; display: inline-block;') + condition.name, '!'+state[state_name].config.command + ' add ' + conditionSTR, styles.textButton);
-                SI_listItems.push('<span style="'+styles.float.left+'">'+addButton+'</span>');
-            });
+	editFavoriteState = (value) => {
+		state[statusState].config.showConditions = value;
+	},
+	
+	editFavoriteConditon = (args) => {
+	    
+        let condition = args.shift(),
+            setting = args.shift().split('|'),
+            key = setting.shift(),
+            value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];                    
+ 
+        if (debug) {
+            log ('Edit Favorite Condition')
+            log('Key:'+key)
+            log('Value:'+value)
         }
-
-        let F_listItems = [];
-        Object.keys(state[state_name].favorites).map(key => state[state_name].favorites[key]).forEach(condition => {
-            let conditionSTR = (!condition.duration) ? condition.name : condition.name + ' ' + condition.duration + ' ' + condition.direction + ' ' + condition.message;
-            addButton = makeButton(condition.name, '!'+state[state_name].config.command + ' add ' + conditionSTR, styles.textButton);
-            F_listItems.push('<span style="'+styles.float.left+'">'+addButton+' - <span style="font-size: 8pt">'+condition.duration+':'+condition.direction+':'+condition.message+'</span></span>');
-        });
-
-        let contents = '';
-
-        contents += '<h4>StatusInfo Conditions</h4>';
-        if(SI_listItems.length){
-            contents += makeList(SI_listItems, styles.reset + styles.list + styles.overflow, styles.overflow);
-        }else{
-            contents += (extensions.StatusInfo) ? 'Your StatusInfo doesn\'t have any conditions.' : makeButton('StatusInfo', 'https://github.com/RobinKuiper/Roll20APIScripts/tree/master/StatusInfo', styles.textButton) + ' is not installed.';
-        }
-
-        contents += '<hr>';
-
-        contents += '<h4>Favorite Conditions</h4>';
-        if(F_listItems.length){
-            contents += makeList(F_listItems, styles.reset + styles.list + styles.overflow, styles.overflow);
-        }else{
-            contents += 'You don\'t have any favorite conditions yet.';
-        }
-
-        contents += '<br><br>' + makeButton('Edit Favorites', '!'+state[state_name].config.command + ' favorites', styles.button + styles.fullWidth);
-
-        makeAndSendMenu(contents, 'Conditions', 'gm');
-    },
-
-    sendFavoritesMenu = () => {
-        let addButton, editButton, list;
-
-        let listItems = [];
-        Object.keys(state[state_name].favorites).map(key => state[state_name].favorites[key]).forEach(condition => {
-            let conditionSTR = (!condition.duration) ? condition.name : condition.name + ' ' + condition.duration + ' ' + condition.direction + ' ' + condition.message;
-            addButton = makeButton(condition.name, '!'+state[state_name].config.command + ' add ' + conditionSTR, styles.textButton);
-            editButton = makeButton('Edit', '!'+state[state_name].config.command + ' editfav ' + condition.name, styles.button + styles.float.right);
-            listItems.push('<span style="'+styles.float.left+'">'+addButton+'</span> '+editButton);
-        });
-
-        let newButton = makeButton('Add New', '!'+state[state_name].config.command + ' addfav ?{Name} ?{Duration} ?{Direction} ?{Message}', styles.button + styles.fullWidth);
-
-        list = (listItems.length) ? makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow) : 'No favorites yet.';
-
-        makeAndSendMenu(list + '<hr>' + newButton, 'Favorite Conditions', 'gm');
-    },
-
-    sendEditFavoriteConditionMenu = (condition) => {
-        if(!state[state_name].favorites[strip(condition.name).toLowerCase()]){
-            makeAndSendMenu('Condition does not exist.', '', 'gm');
-            return;
-        }
-
-        let nameButton = makeButton(condition.name, '!'+state[state_name].config.command + ' editfav ' + condition.name + ' name|?{Name|'+condition.name+'}', styles.button + styles.float.right);
-        let durationButton = makeButton(condition.duration, '!'+state[state_name].config.command + ' editfav ' + condition.name + ' duration|?{Duration|'+condition.duration+'}', styles.button + styles.float.right);
-        let directionButton = makeButton(condition.direction, '!'+state[state_name].config.command + ' editfav ' + condition.name + ' direction|?{Direction|'+condition.direction+'}', styles.button + styles.float.right);
-
-        let listItems = [
-            '<span style="'+styles.float.left+'">Name</span> '+nameButton,
-            '<span style="'+styles.float.left+'">Duration</span> '+durationButton
-        ];
-
-        if(condition.duration && condition.duration !== 0 && condition.duration !== '0'){
-            listItems.push('<span style="'+styles.float.left+'">Direction</span> '+directionButton);
-        }
-
-        let removeButton = makeButton('Remove', '!'+state[state_name].config.command + ' removefav ' + condition.name, styles.button + styles.fullWidth);
-        let backButton = makeButton('Back', '!'+state[state_name].config.command + ' favorites', styles.button + styles.fullWidth);
-        let messageButton = makeButton((condition.message) ? 'Change Message' : 'Set Message', '!'+state[state_name].config.command + ' editfav ' + condition.name + ' message|?{Message|'+condition.message+'}', styles.button);
-
-        let message = (condition.message) ? condition.message : '<i>None</i>';
-
-        makeAndSendMenu(makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow) + '<hr><b>Message</b><p>' + message + '</p>' + messageButton + '<hr>' + removeButton + '<hr>' + backButton, 'Edit - ' + condition.name, 'gm');
-    },
-
-    sendConfigMenu = (first, message) => {
-        let commandButton = makeButton('!'+state[state_name].config.command, '!' + state[state_name].config.command + ' config command|?{Command (without !)}', styles.button + styles.float.right),
-            markerImgButton = makeButton('<img src="'+state[state_name].config.marker_img+'" width="30px" height="30px" />', '!' + state[state_name].config.command + ' config marker_img|?{Image Url}', styles.button + styles.float.right),
-            nextMarkerButton = makeButton(state[state_name].config.next_marker, '!' + state[state_name].config.command + ' config next_marker|'+!state[state_name].config.next_marker, styles.button + styles.float.right),
-            nextMarkerImgButton = makeButton('<img src="'+state[state_name].config.next_marker_img+'" width="30px" height="30px" />', '!' + state[state_name].config.command + ' config next_marker_img|?{Image Url}', styles.button + styles.float.right),
-            iniAttrButton = makeButton(state[state_name].config.initiative_attribute_name, '!' + state[state_name].config.command + ' config initiative_attribute_name|?{Attribute|'+state[state_name].config.initiative_attribute_name+'}', styles.button + styles.float.right),
-            closeStopButton = makeButton(state[state_name].config.close_stop, '!' + state[state_name].config.command + ' config close_stop|'+!state[state_name].config.close_stop, styles.button + styles.float.right),
-            pullButton = makeButton(state[state_name].config.pull, '!' + state[state_name].config.command + ' config pull|'+!state[state_name].config.pull, styles.button + styles.float.right),
-            durationButton = makeButton(state[state_name].config.duration, '!' + state[state_name].config.command + ' config duration|'+!state[state_name].config.duration, styles.button + styles.float.right),
-            
-            listItems = [
-                '<span style="'+styles.float.left+'">Command:</span> ' + commandButton,
-                '<span style="'+styles.float.left+'">Ini. Attribute:</span> ' + iniAttrButton,
-                '<span style="'+styles.float.left+'">Marker Img:</span> ' + markerImgButton,
-                '<span style="'+styles.float.left+'">Use Next Marker:</span> ' + nextMarkerButton,
-                '<span style="'+styles.float.left+'">Next Marker Img:</span> ' + nextMarkerImgButton,
-                '<span style="'+styles.float.left+'">Stop on close:</span> ' + closeStopButton,
-                '<span style="'+styles.float.left+'">Auto Pull Map:</span> ' + pullButton,
-                '<span style="'+styles.float.left+'">Display Duration:</span> ' + durationButton,
-            ],
-
-            configTurnorderButton = makeButton('Turnorder Config', '!'+state[state_name].config.command + ' config turnorder', styles.button),
-            configTimerButton = makeButton('Timer Config', '!'+state[state_name].config.command + ' config timer', styles.button),
-            configAnnouncementsButton = makeButton('Announcement Config', '!'+state[state_name].config.command + ' config announcements', styles.button),
-            configMacroButton = makeButton('Macro Config', '!'+state[state_name].config.command + ' config macro', styles.button),
-            resetButton = makeButton('Reset', '!' + state[state_name].config.command + ' reset', styles.button + styles.fullWidth),
-
-            title_text = (first) ? script_name + ' First Time Setup' : script_name + ' Config';
-
-        message = (message) ? '<p>'+message+'</p>' : '';
-        let contents = message+makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+configTurnorderButton+'<br>'+configTimerButton+'<br>'+configAnnouncementsButton+'<br>'+configMacroButton+'<hr><p style="font-size: 80%">You can always come back to this config by typing `!'+state[state_name].config.command+' config`.</p><hr>'+resetButton;
-        makeAndSendMenu(contents, title_text, 'gm');
-    },
-
-    sendConfigTurnorderMenu = () => {
-        let throwIniButton = makeButton(state[state_name].config.turnorder.throw_initiative, '!' + state[state_name].config.command + ' config turnorder throw_initiative|'+!state[state_name].config.turnorder.throw_initiative, styles.button + styles.float.right),
-            iniDieButton = makeButton('d' + state[state_name].config.turnorder.ini_die, '!' + state[state_name].config.command + ' config turnorder ini_die|?{Die (without the d)|'+state[state_name].config.turnorder.ini_die+'}', styles.button + styles.float.right),
-            showRollButton = makeButton(state[state_name].config.turnorder.show_initiative_roll, '!' + state[state_name].config.command + ' config turnorder show_initiative_roll|'+!state[state_name].config.turnorder.show_initiative_roll, styles.button + styles.float.right),
-            autoSortButton = makeButton(state[state_name].config.turnorder.auto_sort, '!' + state[state_name].config.command + ' config turnorder auto_sort|'+!state[state_name].config.turnorder.auto_sort, styles.button + styles.float.right),
-            rerollIniButton = makeButton(state[state_name].config.turnorder.reroll_ini_round, '!' + state[state_name].config.command + ' config turnorder reroll_ini_round|'+!state[state_name].config.turnorder.reroll_ini_round, styles.button + styles.float.right),
-            skipCustomButton = makeButton(state[state_name].config.turnorder.skip_custom, '!' + state[state_name].config.command + ' config turnorder skip_custom|'+!state[state_name].config.turnorder.skip_custom, styles.button + styles.float.right),
-
-            backButton = makeButton('< Back', '!'+state[state_name].config.command + ' config', styles.button + styles.fullWidth),
-
-            listItems = [
-                '<span style="'+styles.float.left+'">Auto Roll Ini.:</span> ' + throwIniButton,
-                '<span style="'+styles.float.left+'">Reroll Ini. p. Round:</span> ' + rerollIniButton,
-                '<span style="'+styles.float.left+'">Auto Sort:</span> ' + autoSortButton,
-                '<span style="'+styles.float.left+'">Skip Custom Item:</span> ' + skipCustomButton
-            ];
-
-            if(state[state_name].config.turnorder.throw_initiative){
-                listItems.push('<span style="'+styles.float.left+'">Ini Die:</span> ' + iniDieButton);
-            }
-
-            if(state[state_name].config.turnorder.throw_initiative){
-                listItems.push('<span style="'+styles.float.left+'">Show Initiative:</span> ' + showRollButton);
-            }
-
-        let contents = makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+'<hr>'+backButton;
-        makeAndSendMenu(contents, script_name + ' Turnorder Config', 'gm');
-    },
-
-    sendConfigAnnounceMenu = () =>{
-        let announceTurnButton = makeButton(state[state_name].config.announcements.announce_turn, '!' + state[state_name].config.command + ' config announcements announce_turn|'+!state[state_name].config.announcements.announce_turn, styles.button + styles.float.right),
-            announceRoundButton = makeButton(state[state_name].config.announcements.announce_round, '!' + state[state_name].config.command + ' config announcements announce_round|'+!state[state_name].config.announcements.announce_round, styles.button + styles.float.right),
-            announceConditionsButton = makeButton(state[state_name].config.announcements.announce_conditions, '!' + state[state_name].config.command + ' config announcements announce_conditions|'+!state[state_name].config.announcements.announce_conditions, styles.button + styles.float.right),
-            handleLongNameButton = makeButton(state[state_name].config.announcements.handleLongName, '!' + state[state_name].config.command + ' config announcements handleLongName|'+!state[state_name].config.announcements.handleLongName, styles.button + styles.float.right),
-            useFXButton = makeButton(state[state_name].config.announcements.use_fx, '!' + state[state_name].config.command + ' config announcements use_fx|'+!state[state_name].config.announcements.use_fx, styles.button + styles.float.right),
-            FXTypeButton = makeButton(state[state_name].config.announcements.fx_type, '!' + state[state_name].config.command + ' config announcements fx_type|?{Type|'+state[state_name].config.announcements.fx_type+'}', styles.button + styles.float.right),
-            whisperTurnGMButton = makeButton(state[state_name].config.announcements.whisper_turn_gm, '!' + state[state_name].config.command + ' config announcements whisper_turn_gm|'+!state[state_name].config.announcements.whisper_turn_gm, styles.button + styles.float.right),
-
-            backButton = makeButton('< Back', '!'+state[state_name].config.command + ' config', styles.button + styles.fullWidth),
-
-            listItems = [];
-
-        listItems.push('<span style="'+styles.float.left+'">Announce Round:</span> ' + announceRoundButton);
-        listItems.push('<span style="'+styles.float.left+'">Announce Turn:</span> ' + announceTurnButton);
-    
-        if(!state[state_name].config.announcements.announce_turn){
-            listItems.push('<span style="'+styles.float.left+'">Announce Conditions:</span> ' + announceConditionsButton);
-        }
-        if(state[state_name].config.announcements.announce_turn){
-            listItems.push('<span style="'+styles.float.left+'">Whisper GM Only:</span> ' + whisperTurnGMButton);
-            listItems.push('<span style="'+styles.float.left+'">Shorten Long Name:</span> ' + handleLongNameButton);
-        }
-
-        listItems.push('<span style="'+styles.float.left+'">Use FX:</span> ' + useFXButton);
-
-        if(state[state_name].config.announcements.use_fx){
-            listItems.push('<span style="'+styles.float.left+'">FX Type:</span> ' + FXTypeButton);
-        }
-
-        let contents = makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+'<hr>'+backButton;
-        makeAndSendMenu(contents, script_name + ' Announcements Config', 'gm');
-    },
-
-    sendConfigTimerMenu = () => {
-        let turnTimerButton = makeButton(state[state_name].config.timer.use_timer, '!' + state[state_name].config.command + ' config timer use_timer|'+!state[state_name].config.timer.use_timer, styles.button + styles.float.right),
-            timeButton = makeButton(state[state_name].config.timer.time, '!' + state[state_name].config.command + ' config timer time|?{Time|'+state[state_name].config.timer.time+'}', styles.button + styles.float.right),
-            autoSkipButton = makeButton(state[state_name].config.timer.auto_skip, '!' + state[state_name].config.command + ' config timer auto_skip|'+!state[state_name].config.timer.auto_skip, styles.button + styles.float.right),
-            chatTimerButton = makeButton(state[state_name].config.timer.chat_timer, '!' + state[state_name].config.command + ' config timer chat_timer|'+!state[state_name].config.timer.chat_timer, styles.button + styles.float.right),
-            tokenTimerButton = makeButton(state[state_name].config.timer.token_timer, '!' + state[state_name].config.command + ' config timer token_timer|'+!state[state_name].config.timer.token_timer, styles.button + styles.float.right),
-            tokenFontButton = makeButton(state[state_name].config.timer.token_font, '!' + state[state_name].config.command + ' config timer token_font|?{Font|Arial|Patrick Hand|Contrail|Light|Candal}', styles.button + styles.float.right),
-            tokenFontSizeButton = makeButton(state[state_name].config.timer.token_font_size, '!' + state[state_name].config.command + ' config timer token_font_size|?{Font Size|'+state[state_name].config.timer.token_font_size+'}', styles.button + styles.float.right),
-
-            backButton = makeButton('< Back', '!'+state[state_name].config.command + ' config', styles.button + styles.fullWidth),
-
-            listItems = [
-                '<span style="'+styles.float.left+'">Turn Timer:</span> ' + turnTimerButton,
-                '<span style="'+styles.float.left+'">Time:</span> ' + timeButton,
-                '<span style="'+styles.float.left+'">Auto Skip:</span> ' + autoSkipButton,
-                '<span style="'+styles.float.left+'">Show in Chat:</span> ' + chatTimerButton,
-                '<span style="'+styles.float.left+'">Show on Token:</span> ' + tokenTimerButton,
-                '<span style="'+styles.float.left+'">Token Font:</span> ' + tokenFontButton,
-                '<span style="'+styles.float.left+'">Token Font Size:</span> ' + tokenFontSizeButton
-            ];
-
-        let contents = makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+'<hr>'+backButton;
-        makeAndSendMenu(contents, script_name + ' Timer Config', 'gm');
-    },
-
-    sendConfigMacroMenu = () => {
-        let runMacroButton = makeButton(state[state_name].config.macro.run_macro, '!' + state[state_name].config.command + ' config macro run_macro|'+!state[state_name].config.macro.run_macro, styles.button + styles.float.right),
-            macroNameButton = makeButton(state[state_name].config.macro.macro_name, '!' + state[state_name].config.command + ' config macro macro_name|?{Macro Name|'+state[state_name].config.macro.macro_name+'}', styles.button + styles.float.right),
-
-            backButton = makeButton('< Back', '!'+state[state_name].config.command + ' config', styles.button + styles.fullWidth),
-
-            listItems = [
-                '<span style="'+styles.float.left+'">Run Macro:</span> ' + runMacroButton,
-                '<span style="'+styles.float.left+'">Macro Name:</span> ' + macroNameButton,
-            ];
-
-        let contents = '<p>A macro with the right name should be in the characters ability list.</p>'+makeList(listItems, styles.reset + styles.list + styles.overflow, styles.overflow)+'<hr>'+backButton;
-        makeAndSendMenu(contents, script_name + ' Macro Config', 'gm');
-    },
-
-    sendMenu = () => {
-        let nextButton = makeButton('Next Turn', '!' + state[state_name].config.command + ' next b', styles.button),
-            prevButton = makeButton('Prev. Turn', '!' + state[state_name].config.command + ' prev b', styles.button),
-            startCombatButton = makeButton('Start Combat', '!' + state[state_name].config.command + ' start b', styles.button),
-            stopCombatButton = makeButton('Stop Combat', '!' + state[state_name].config.command + ' stop b', styles.button),
-            pauseTimerTitle = (paused) ? 'Start Timer' : 'Pause Timer',
-            pauseTimerButton = makeButton(pauseTimerTitle, '!' + state[state_name].config.command + ' pt b', styles.button),
-            stopTimerButton = makeButton('Stop Timer', '!' + state[state_name].config.command + ' st b', styles.button),
-            addConditionButton = makeButton('Add Condition', '!' + state[state_name].config.command + ' add ?{Condition} ?{Duration}', styles.button),
-            removeConditionButton = makeButton('Remove Condition', '!' + state[state_name].config.command + ' remove ?{Condition}', styles.button),
-            resetConditionsButton = makeButton('Reset Conditions', '!'+state[state_name].config.command + ' reset conditions', styles.button),
-            favoritesButton = makeButton('Favorite Conditions', '!'+state[state_name].config.command + ' favorites', styles.button),
-            contents;
         
-        if(inFight()){
-            contents = ' \
-            '+nextButton+prevButton+'<br> \
-            '+pauseTimerButton+stopTimerButton+' \
-            <hr> \
-            <b>With Selected:</b><br> \
-            '+addConditionButton+'<br> \
-            '+removeConditionButton+' \
-            <hr> \
-            '+favoritesButton+' \
-            <hr> \
-            '+stopCombatButton+'<br> \
-            '+resetConditionsButton;
-        }else{
-            contents = ' \
-            '+startCombatButton+' \
-            <hr> \
-            '+favoritesButton;
+        state[statusState].conditions[condition][key] = value;
+        
+        sendTrackerMenu()    
+	},
+	
+	editStatusState = (args) => {
+        let setting = args.shift().split('|'),
+            key = setting.shift(),
+            value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
+
+        if (debug) {
+            log ('Edit Status State')
+            log('Key:'+key)
+            log('Value:'+value)
         }
 
-        makeAndSendMenu(contents, script_name + ' Menu', 'gm');
+        state[statusState].config[key] = value;
+
+        whisper = (state[statusState].config.sendOnlyToGM) ? '/w gm ' : '';
+        
+        sendStatusMenu();	    
+	},
+	
+	createCondition = (condition) => {
+		let name = condition.shift();
+
+		if(!name){
+			sendConditionsMenu('You didn\'t give a condition name, eg. <i>!'+state[statusState].config.command+' config-conditions add Prone</i>.');
+		} else if (state[statusState].conditions[name.toLowerCase()]) {
+			sendConditionsMenu('The condition `'+name+'` already exists.');
+		} else {
+			state[statusState].conditions[name.toLowerCase()] = {
+				name: name,
+				icon: 'red',
+				description: '',
+				duration: 1,
+				direction: 0
+			}	
+			sendConditionMenu(condition.toLowerCase());		
+		}		
+	},
+	
+	deleteCondition = (condition) => {			
+		let name = condition.shift(),
+            confirm = args.shift();
+			
+		if (confirm === 'yes') {
+			if(!name){
+				sendConditionsMenu('You didn\'t give a condition name, eg. <i>!condition config-conditions remove Prone</i>.');
+			} else if( !state[statusState].conditions[name.toLowerCase()]){
+				sendConditionsMenu('The condition `'+name+'` does\'t exist.');
+			} else {
+				delete state[statusState].conditions[name.toLowerCase()];
+				sendConditionsMenu('The condition `'+name+'` is removed.');
+			}
+		}	
+	},
+	
+	editCondition = (args, conditionKey) => {
+	    if (debug) {
+            log('Edit Condition')
+	    }
+	    
+        if (args.length > 0) {
+    		let setting = args.shift().split('|'),
+    		    key     = setting.shift(),
+    		    value   = setting.shift();
+		
+			if (debug) {
+			    log('Settings:' + setting)
+			    log('Key:' + key)
+			    log('Value:' + value)
+			}
+    
+    		if(key === 'name' && value !== state[statusState].conditions[conditionKey].name){ 
+   				state[statusState].conditions[value.toLowerCase()] = state[statusState].conditions[conditionKey];
+   				delete state[statusState].conditions[conditionKey];
+ 				conditionKey = value.toLowerCase();
+    	    }
+    
+            if (key === 'description') {
+                value = value + ' ' + args.join(' ') 
+            }
+   			state[statusState].conditions[conditionKey][key] = value;
+        }
+		
+		sendConditionMenu(conditionKey);	
+	},
+	
+    getConditions = () => {
+        return state[statusState].conditions;
+    },
+	
+    // sendTokenConditionMenu = (tokens, toPlayers) => {
+    //     let contents = '<table style="width: 100%;">';
+
+    //     let i = 0;
+    //     tokens.forEach(token => {
+    //         if(!token) return;
+
+    //         let conditions = state[combatState].conditions[strip(token.get('id')).toLowerCase()];
+
+    //         if(i) contents += '<tr><td colspan="2"><hr></td></tr>';
+    //         i++;
+
+    //         contents += ' \
+    //             <tr> \
+    //                 <td colspan="2" style="font-size: 12pt; font-weight: bold;"> \
+    //                     <img src='+token.get('imgsrc')+' style="width: 32px; height: 32px; vertical-align: middle;" /> \
+    //                     <span style="vertical-align: middle;">'+token.get('name')+'</span> \
+    //                 </td> \
+    //             </tr>';
+
+    //         if(!conditions || !conditions.length){
+    //             contents += '<tr><td colspan="2" style="text-align: center;"><i>None</i></td></tr>';
+    //         }else{
+    //             conditions.forEach(condition => {
+    //                 let si_condition = false;
+    //                 if(extensions.StatusInfo){
+    //                     si_condition = StatusInfo.getConditionByKey(condition.name) || false;
+    //                 }
+
+    //                 let removeButton = makeButton('<img src="https://s3.amazonaws.com/files.d20.io/images/11381509/YcG-o2Q1-CrwKD_nXh5yAA/thumb.png?1439051579" />', '!'+state[combatState].config.command + ' remove ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;');
+    //                 let showButton = (condition.message || si_condition) ? makeButton('<img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699008-icon-22-eye-128.png" />', '!'+state[combatState].config.command + ' showcondition ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;') : '';
+    //                 let name = condition.name;
+    //                 name += (condition.duration) ? ' (' + condition.duration + ')' : '';
+    //                 contents += ' \
+    //                 <tr> \
+    //                     <td style="text-align: center">'+name+'</td> \
+    //                     <td>'+removeButton+showButton+'</td> \
+    //                 </tr>';
+    //             });
+    //         }
+    //     });
+
+    //     contents += '</table>';
+
+    //     makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
+    // },
+
+//    sendConditionsMenu = () => {
+//        let addButton;
+//
+//        let SI_listItems = [];
+//        if(extensions.StatusInfo){
+//            Object.keys(StatusInfo.getConditions()).map(key => StatusInfo.getConditions()[key]).forEach(condition => {
+//                let conditionSTR = condition.name + ' ?{Duration} ?{Direction|-1} ?{Message}';
+//                addButton = makeButton(StatusInfo.getIcon(condition.icon, 'margin-right: 5px; margin-top: 5px; display: inline-block;') + condition.name, '!'+state[combatState].config.command + ' add ' + conditionSTR, styles.textButton);
+//                SI_listItems.push('<span style="'+styles.float.left+'">'+addButton+'</span>');
+//            });
+//        }
+
+//        let contents = '';
+//
+//        contents += '<hr>';
+//
+//
+//        contents += '<br><br>' + makeButton('Edit Favorites', '!'+state[combatState].config.command + ' favorites', styles.button + styles.fullWidth);
+//
+//        makeAndSendMenu(contents, 'Conditions', 'gm');
+//    },
+
+    sendConfigMenu = () => {
+
+		let configCombatButton          = makeBigButton('Combat', '!ct config combat'),
+	     	configTurnorderButton       = makeBigButton('Turnorder', '!ct config turnorder'),
+			configTimerButton           = makeBigButton('Timer', '!ct config timer'),
+			configAnnouncementsButton   = makeBigButton('Announcement', '!ct config announcements'),
+			configMacroButton           = makeBigButton('Macro', '!ct config macro'),
+			configStatusButton          = makeBigButton('Status', '!condition config'),
+			configConditionButton       = makeBigButton('Conditions', '!condition config-conditions'),
+			exportButton                = makeBigButton('Export', '!ct config export'),
+			importButton                = makeBigButton('Import', '!ct config import ?{Config}'),	
+			resetButton                 = makeBigButton('Reset', '!ct reset'),
+			backToTrackerButton         = makeBigButton('Back To Tracker', '!ct'),
+			titleText                   = 'CombatTracker Setup<span style="' + styles.version + '"> (' + version + ')</span>',
+			combatHeaderText            = '<div style="'+styles.header+'">Combat Setup</div>',
+			statusHeadersText           = '<div style="'+styles.header+'">Status Setup</div>',
+			resetHeaderText             = '<div style="'+styles.header+'">Reset CombatTracker</div>',	
+			backToTrackerText           = '<div style="'+styles.header+'">Return to Tracker</div>',	
+			
+		 	contents  = combatHeaderText
+			contents += configCombatButton
+			contents += configTurnorderButton			
+			contents += configTimerButton
+			contents += configAnnouncementsButton
+			contents += configMacroButton	
+			contents += statusHeadersText 
+			contents += configStatusButton
+			contents += configConditionButton
+			contents += exportButton
+			contents += importButton
+			contents += resetHeaderText
+			contents += resetButton;
+			
+			if (state[combatState].config.returnToTracker) {
+			    contents += backToTrackerText
+			    contents += backToTrackerButton
+			}
+			
+        makeAndSendMenu(contents, titleText, 'gm');
     },
 
-    sendHelpMenu = () => {
-        let configButton = makeButton('Config', '!' + state[state_name].config.command + ' config', styles.button + styles.fullWidth);
+    sendCombatMenu = () => {
+        let backButton = makeBigButton('Back', '!ct config'),			
+			listItems = [
+				makeTextButton('Initiative Attr', state[combatState].config.initiative_attribute_name, '!ct config combat initiative_attribute_name|?{Attribute|'+state[combatState].config.initiative_attribute_name+'}'),
+				makeTextButton('Marker', '<img src="'+state[combatState].config.marker_img+'" width="15px" height="15px" />', '!ct config combat marker_img|?{Image Url}'),
+				makeTextButton('Use Next Marker',state[combatState].config.next_marker, '!ct config combat next_marker|'+!state[combatState].config.next_marker),
+				makeTextButton('Next Marker', '<img src="'+state[combatState].config.next_marker_img+'" width="15px" height="15px" />', '!ct config combat next_marker_img|?{Image Url}'),
+				makeTextButton('Stop on Close', state[combatState].config.close_stop, '!ct config combat close_stop|'+!state[combatState].config.close_stop),
+				makeTextButton('Auto Pull Map', state[combatState].config.pull, '!ct config combat pull|'+!state[combatState].config.pull),
+				makeTextButton('Display Duration', state[combatState].config.duration, '!ct config combat duration|'+!state[combatState].config.duration),      
+			],		
+			contents = makeList(listItems, backButton);	
+			
+        makeAndSendMenu(contents, 'Combat Setup', 'gm');
+    },
 
-        let listItems = [
-            '<span style="'+styles.underline+'">!'+state[state_name].config.command+' help</span> - Shows this menu.',
-            '<span style="'+styles.underline+'">!'+state[state_name].config.command+' config</span> - Shows the configuration menu.'
-        ];
+	sendTurnorderMenu = () => {
+        let backButton = makeBigButton('Back', '!ct config'),
+			listItems = [
+				makeTextButton('Auto Roll Initiative', state[combatState].config.turnorder.throw_initiative, '!ct config turnorder throw_initiative|'+!state[combatState].config.turnorder.throw_initiative),
+				makeTextButton('Initiative Die', 'd' + state[combatState].config.turnorder.ini_die, '!ct config turnorder ini_die|?{Die (without the d)|'+state[combatState].config.turnorder.ini_die+'}'),
+				makeTextButton('Roll Ini Each Round', state[combatState].config.turnorder.reroll_ini_round, '!ct config turnorder reroll_ini_round|'+!state[combatState].config.turnorder.reroll_ini_round),
+				makeTextButton('Show Initiative', state[combatState].config.turnorder.show_initiative_roll, '!ct config turnorder show_initiative_roll|'+!state[combatState].config.turnorder.show_initiative_roll),
+				makeTextButton('Auto Sort Turnorder', state[combatState].config.turnorder.auto_sort, '!ct config turnorder auto_sort|'+!state[combatState].config.turnorder.auto_sort),
+				makeTextButton('Skip Custom Item', state[combatState].config.turnorder.skip_custom, '!ct config turnorder skip_custom|'+!state[combatState].config.turnorder.skip_custom),
+			],
+			contents = makeList(listItems, backButton);	
+			
+        makeAndSendMenu(contents, 'Turnorder Setup', 'gm');
+    },
+	
+    sendTimerMenu = () => {
+        let backButton = makeBigButton('Back', '!ct config'),
+            listItems = [
+                 makeTextButton('Turn Timer', state[combatState].config.timer.use_timer, '!ct config timer use_timer|'+!state[combatState].config.timer.use_timer),
+                 makeTextButton('Time', state[combatState].config.timer.time, '!ct config timer time|?{Time|'+state[combatState].config.timer.time+'}'),
+                 makeTextButton('Auto Skip', state[combatState].config.timer.auto_skip, '!ct config timer auto_skip|'+!state[combatState].config.timer.auto_skip),
+                 makeTextButton('Chat Timer', state[combatState].config.timer.chat_timer, '!ct config timer chat_timer|'+!state[combatState].config.timer.chat_timer),
+                 makeTextButton('Show on Token', state[combatState].config.timer.token_timer, '!ct config timer token_timer|'+!state[combatState].config.timer.token_timer),
+                 makeTextButton('Token Font', state[combatState].config.timer.token_font, '!ct config timer token_font|?{Font|Arial|Patrick Hand|Contrail|Light|Candal}'),
+                 makeTextButton('Token Font Size',state[combatState].config.timer.token_font_size, '!ct config timer token_font_size|?{Font Size|'+state[combatState].config.timer.token_font_size+'}'),
+            ],
+            contents = makeList(listItems, backButton);	
+        
+		makeAndSendMenu(contents, 'Timer Setup', 'gm');
+    },	
+	
+    sendAnnounceMenu = () =>{
+        let backButton = makeBigButton('Back', '!ct config'),
+			listItems = [
+				makeTextButton('Announce Rounds', state[combatState].config.announcements.announce_round, '!ct config announcements announce_round|'+!state[combatState].config.announcements.announce_round),
+				makeTextButton('Announce Turns', state[combatState].config.announcements.announce_turn, '!ct config announcements announce_turn|'+!state[combatState].config.announcements.announce_turn),
+				makeTextButton('Whisper GM Only', state[combatState].config.announcements.whisper_turn_gm, '!ct config announcements whisper_turn_gm|'+!state[combatState].config.announcements.whisper_turn_gm),
+				makeTextButton('Shorten Long Names', state[combatState].config.announcements.handleLongName, '!ct config announcements handleLongName|'+!state[combatState].config.announcements.handleLongName),
+				makeTextButton('Use FX', state[combatState].config.announcements.use_fx, '!ct config announcements use_fx|'+!state[combatState].config.announcements.use_fx),
+				makeTextButton('FX Type', state[combatState].config.announcements.fx_type, '!ct config announcements fx_type|?{Type|'+state[combatState].config.announcements.fx_type+'}'),
+			],
+			contents = makeList(listItems, backButton);	
+			
+        makeAndSendMenu(contents, 'Announcements Setup', 'gm');
+    },
 
-        let contents = '<b>Commands:</b>'+makeList(listItems, styles.reset + styles.list)+'<hr>'+configButton;
-        makeAndSendMenu(contents, script_name + ' Help', 'gm');
+    sendMacroMenu = () => {
+        let backButton = makeBigButton('Back', '!ct config'),
+			listItems = [
+				makeTextButton('Run Macro', state[combatState].config.macro.run_macro, '!ct config macro run_macro|'+!state[combatState].config.macro.run_macro),
+				makeTextButton('Macro Name', state[combatState].config.macro.macro_name, '!ct config macro macro_name|?{Macro Name|'+state[combatState].config.macro.macro_name+'}'),
+			],
+            contents = makeList(listItems, backButton) + '<p>A macro with the right name should be in the characters ability list.</p>';	
+			
+        makeAndSendMenu(contents, 'Macro Setup', 'gm');
+    },
+	
+	//Start Status Menus
+	sendStatusMenu = (first) => {
+        let backButton = makeBigButton('Back', '!ct config'),
+            listItems = [
+				makeTextButton('Only to GM', state[statusState].config.sendOnlyToGM, '!condition config sendOnlyToGM|'+!state[statusState].config.sendOnlyToGM),
+				makeTextButton('Player Show', state[statusState].config.userAllowed, '!condition config userAllowed|'+!state[statusState].config.userAllowed),
+				makeTextButton('Player Toggle', state[statusState].config.userToggle, '!condition config userToggle|'+!state[statusState].config.userToggle),
+				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
+				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config showIconInDescription|'+!state[statusState].config.showIconInDescription),
+				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config showConditions|?{Show|All|Favorites}'),	
+			],			
+			contents = makeList(listItems, backButton);	
+
+        makeAndSendMenu(contents, 'Status Setup', 'gm')		
+	},
+	
+    sendConditionsMenu = (message) => {
+        let key, duration, direction, override,	condition, conditionButton, favorite, icon,	output,
+            backButton = makeBigButton('Back', '!ct' + ' config'),
+			addButton = makeBigButton('Add Condition', '!condition config-conditions add ?{Name}'),
+			listItems = [],
+            icons = [],
+            check = true,
+			contents = '<div>Icon Name <span style="float:right">(Dir,Dur,Ovr,Fav)</span></div>'
+			
+        for (key in state[statusState].conditions) {
+            condition       = state[statusState].conditions[key]
+            conditionButton = makeButton(state[statusState].conditions[key].name, '!condition config-conditions ' + key)
+			icon            = getIcon(state[statusState].conditions[key].icon,'display:inline-block;',24,24)
+			
+			if (!condition.duration) {
+				duration = 'N'
+			} else {
+				duration = condition.duration
+			}	
+			if (!condition.direction) {
+				direction = 'N'
+			} else {
+				direction = condition.direction
+			}	
+			if (!condition.override) {
+				override = 'N'
+			} else {
+				override = 'Y'
+			}		
+			if (condition.favorite) {
+			    favorite = 'Y'
+			} else {
+			    favorite = 'N'
+			}
+
+            listItems.push(icon+'<span>'+conditionButton+'</span><span style="float:right">('+duration+','+direction+','+override+','+favorite+')</span>');
+
+            if(check && icons.includes(state[statusState].conditions[key].icon)){
+                message = message || '' + '<br>Multiple conditions use the same icon';
+                check = false;
+            }
+            //icons.push(state[statusState].conditions[key].icon);
+        }
+
+        message = (message) ? '<p style="color: red">'+message+'</p>' : '';
+        contents += message + makeList(listItems, backButton, addButton);
+        makeAndSendMenu(contents, 'Conditions');
+    },
+
+    sendConditionMenu = (key, message) => {
+        let condition           = state[statusState].conditions[key],
+			removeButton        = makeBigButton('Delete Condition', '!condition config-conditions remove '+key+' ?{Are you sure?|Yes,yes|No,no}'),
+			descriptionButton   = makeBigButton('Edit Description', '!condition config-conditions '+key+' description|?{Description|'+condition.description+'}'),
+			backButton
+	    
+	    if (state[combatState].config.returnToTracker) {
+	        backButton          = makeBigButton('Back', '!ct', buttonStyle + ' width: 100%')
+	    } else {
+	        backButton          = makeBigButton('Back', '!condition config-conditions', buttonStyle + ' width: 100%')
+	    }
+	    
+		let	markerDropdown = '?{Marker';		
+        markers.forEach((marker) => {
+            markerDropdown += '|'+ucFirst(marker).replace(/-/g, ' ')+','+marker
+        })
+        markerDropdown += '}';
+
+		let	listItems = [
+				makeTextButton('Name', condition.name, '!condition config-conditions '+key+' name|?{Name}'),
+				makeTextButton('Marker', getIcon(condition.icon) || condition.icon, '!condition config-conditions '+key+' icon|'+markerDropdown),				
+				makeTextButton('Duration', condition.duration, '!condition config-conditions '+key+' duration|?{Duration|1}'),
+				makeTextButton('Direction', condition.direction, '!condition config-conditions '+key+' direction|?{Direction|0}'),
+				makeTextButton('Override', condition.override, '!condition config-conditions '+key+' override|'+!condition.override),
+				makeTextButton('Favorites', condition.favorite, '!condition config-conditions '+key+' favorite|'+!condition.favorite)
+			];
+
+        message = (message) ? '<p style="color: red">'+message+'</p>' : '';
+		let contents = message+makeList(listItems)+'<hr>'+descriptionButton+'<b>Description:</b>'+condition.description+removeButton+'<hr>'+backButton 	
+        makeAndSendMenu(contents, 'Condition Setup');
+    },
+
+    // sendConditionList = (selected, show_names) => {
+    //     let contents = '';
+    //     if(selected && selected.length){
+    //         selected.forEach(s => {
+    //             let token = getObj(s._type, s._id);
+    //             if(token && token.get('statusmarkers') !== ''){
+    //                 let statusmarkers = token.get('statusmarkers').split(',');
+    //                 let active_conditions = [];
+    //                 statusmarkers.forEach(marker => {
+    //                     let con;
+    //                     if(con = getObjects(state[statusState].conditions, 'icon', marker)){
+    //                         if(con[0] && con[0].name) active_conditions.push(con[0].name);
+    //                     }
+    //                 });
+
+    //                 if(active_conditions.length){
+    //                     contents += '<b>'+token.get('name') + '\'s Conditions:</b><br><i>' + active_conditions.join(', ') + '</i><hr>';
+    //                 }
+    //             }
+    //         });
+    //     }
+
+    //     contents += 'Toggle Condition on Selected Token(s):<br>'
+    //     for(let condition_key in state[statusState].conditions){
+    //         let condition = state[statusState].conditions[condition_key];
+    //         contents += makeButton(getIcon(condition.icon) || condition.name, '!' + state[statusState].config.command + ' toggle '+condition_key, buttonStyle + 'float: none; margin-right: 5px;', condition.name);
+    //     }
+    //     //contents += (!show_names) ? '<br>' + makeButton('Show Names', '!' + state[statusState].config.command + ' names', buttonStyle + 'float: none;') : '<br>' + makeButton('Hide Names', '!' + state[statusState].config.command, buttonStyle + 'float: none;');
+
+    //     makeAndSendMenu(contents, script_name + ' Menu');
+    // },
+	
+    sendTrackerMenu = () => {
+        let nextButton          = makeImageButton('!ct next b',nextImage,'Next Turn','transparent',18),
+            prevButton          = makeImageButton('!ct prev b',prevImage,'Previous Turn','transparent',18),
+            stopButton          = makeImageButton('!ct stop b',stopImage,'Stop Combat','transparent',18),
+            startButton         = makeImageButton('!ct start b',startImage,'Start Combat','transparent',18),
+            pauseTimerButton    = makeImageButton('!ct pt b',pauseImage,'Pause Timer','transparent',18),
+            stopTimerButton     = makeImageButton('!ct st b',timerImage,'Pause Timer','transparent',18),
+            allConditionsButton = makeImageButton('!ct all b',allConditionsImage,'Show All Conditions','transparent',18),
+            favoritesButton     = makeImageButton('!ct fav b',favoriteImage,'Show Favorites','transparent',18),
+            configButton        = makeImageButton('!ct tracker b',backImage,'Show Setup','transparent',18),
+            listItems           = [],
+            titleText           = 'CombatTracker Menu<span style="' + styles.version + '"> (' + version + ')</span>',
+            contents, key, condition, conditionButton, addButton, removeButton,favoriteButton,listContents;
+
+        state[combatState].config.returnToTracker = true
+        
+        if (inFight() ) {
+            contents = '<div style="background-color:green;width:100%;padding:2px;vertical-align:middle">'+stopButton + prevButton + nextButton + pauseTimerButton + stopTimerButton 
+            if (state[statusState].config.showConditions == 'Favorites'){
+                contents += allConditionsButton
+            } else {
+                contents += favoritesButton
+            } 
+        } else {
+            contents = '<div style="background-color:red">'+startButton 
+        }     
+
+        contents += configButton
+        contents += '</div>'
+        
+        for(key in state[statusState].conditions){
+            condition       = state[statusState].conditions[key]
+            conditionButton = makeImageButton('!condition config-conditions '  + key,backImage,'Edit Condition','transparent',12)
+            removeButton    = makeImageButton('!ct remove '  + key,deleteImage,'Remove Condition','transparent',12)
+            
+            if (condition.override) {
+                addButton = makeImageButton('!ct add '+key +' ?{Duration|'+condition.duration+'} ?{Direction|'+condition.direction + '}' ,addImage,'Add Condition','transparent',12)
+            } else {
+                addButton = makeImageButton('!ct add '+key+' '+condition.duration+' '+condition.direction,addImage,'Add Condition','transparent',12)
+            }
+            
+            if (condition.favorite) {
+                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,favoriteImage,'Remove from Favorites','transparent',12)
+            } else {
+                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,allConditionsImage,'Add to Favorites','transparent',12)
+            }
+
+            listContents = '<div>'
+            listContents += getIcon(state[statusState].conditions[key].icon,'display:inline-block;margin-right:3px')
+            listContents += '<span style="vertical-align:middle">'+condition.name+'</span>'
+            listContents += '<span style="float:right;vertical-align:middle">'+addButton+removeButton+favoriteButton+conditionButton+'</span>'
+            listContents += '</div>'
+            
+            if (state[statusState].config.showConditions == 'Favorites') {
+                if (state[statusState].conditions[key].favorite) {
+                    listItems.push(listContents);
+                }    
+            } else {
+                listItems.push(listContents);
+            }
+        }
+        makeAndSendMenu(contents+makeList(listItems),titleText,'gm');
     },
 
     makeAndSendMenu = (contents, title, whisper) => {
-        title = (title && title != '') ? makeTitle(title) : '';
         whisper = (whisper && whisper !== '') ? '/w ' + whisper + ' ' : '';
+		title = makeTitle(title)
         sendChat(script_name, whisper + '<div style="'+styles.menu+styles.overflow+'">'+title+contents+'</div>', null, {noarchive:true});
     },
 
-    makeTitle = (title) => {
-        return '<h3 style="margin-bottom: 10px;">'+title+'</h3>';
+	makeTitle = (title) => {
+		return '<div style="'+styles.title+'">'+title+'</div>'+'<div style="font-weight: bold; border-bottom: 1px solid black;font-size: 100%;style="float:left;"></div>'
+	},
+	
+    makeBigButton = (title, href) => {
+        return '<div style="width:100%"><a style="'+styles.button+'" href="'+href+'">'+title+'</a></div>';
     },
 
-    makeButton = (title, href, style) => {
-        return '<a style="'+style+'" href="'+href+'">'+title+'</a>';
+	makeButton = (title, href, style) => {
+        return '<a style="'+styles.linkButton+'" href="'+href+'">'+title+'</a>';
     },
 
-    makeList = (items, listStyle, itemStyle) => {
-        let list = '<ul style="'+listStyle+'">';
-        items.forEach((item) => {
-            list += '<li style="'+itemStyle+'">'+item+'</li>';
+	makeTextButton = (label, value, href) => {
+        return '<span style="'+styles.textLabel+'">'+label+'</span><a style="'+styles.textButton+'" href="'+href+'">'+value+'</a>';
+    },
+
+    makeImageButton = function(command, image, toolTip, backgroundColor,size){
+        return '<div style="display:inline-block;margin-top:5px;margin-bottom:5px;margin-right:3px;padding:1px;vertical-align:middle;"><a href="'+command+'" title= "'+toolTip+'" style="margin:0px;padding:0px;border:0px solid;background-color:'+backgroundColor+'"><span style="color:black;padding:0px;font-size:'+size+'px;font-family: \'Pictos\'">'+image+'</span></a></div>'
+    },
+	
+    makeList = (items, backButton, extraButton) => {
+        let list;
+        
+        list  = '<ul style="'+styles.reset + styles.list + styles.overflow+'">'
+		items.forEach((item) => {
+            list += '<li style="'+styles.overflow+'">'+item+'</li>';
         });
-        list += '</ul>';
+		list += '</ul>'
+		
+		if (extraButton) {
+			list += extraButton
+		}
+		if(backButton) {
+			list += '<hr>'+backButton;
+		}
         return list;
     },
 
+    sendConditionToChat = (condition) => {
+        let icon = (state[statusState].config.showIconInDescription) ? getIcon(condition.icon, 'margin-right: 5px; margin-top: 5px; display: inline-block;') || '' : '';
+
+        if (debug) {
+            log('Send Condition To Chat')
+        }
+        makeAndSendMenu(condition.description, icon+condition.name,(state[statusState].config.sendOnlyToGM) ? 'gm' : '');
+    },
+    
+    getCombatConditionByName = (tokenID, name) => {
+        state[combatState].conditions[tokenID].forEach((condition) => {
+            if (condition.name == name) {
+                return true
+            }
+        })
+        return false;
+    },
+
+    getConditionByMarker = (marker) => {
+        return getObjects(state[statusState].conditions, 'icon', marker).shift() || false;
+    },
+
+    getConditionByKey = (key) => {
+        return state[statusState].conditions[key];
+    },
+
+    getIcon = (icon, style='', height, width) => {
+        let X = '';
+        let iconStyle = ''
+        let iconSize = ''
+
+        if(typeof icon_image_positions[icon] === 'undefined') return false;
+
+        if (width) {
+            iconStyle += 'width: '+width+'px;height: '+height+'px;';
+        } else {
+            iconStyle += 'width: 24px; height: 24px;';
+        }      
+        
+        if(Number.isInteger(icon_image_positions[icon])){
+            iconStyle += 'background-image: url(https://roll20.net/images/statussheet.png);'
+            iconStyle += 'background-repeat: no-repeat;'
+            iconStyle += 'background-position: -'+icon_image_positions[icon]+'px 0;'
+        }else if(icon_image_positions[icon] === 'X'){
+            iconStyle += 'color: red; margin-right: 0px;';
+            X = 'X';
+        }else{
+            iconStyle += 'background-color: ' + icon_image_positions[icon] + ';';
+            iconStyle += 'border: 1px solid white; border-radius: 50%;'
+        }
+
+        iconStyle += style;
+
+        return '<div style="vertical-align:middle;'+iconStyle+'">'+X+'</div>';
+    },
+    
     checkStatusInfo = () => {
         if(typeof StatusInfo === 'undefined'){
             makeAndSendMenu('Consider installing '+makeButton('StatusInfo', 'https://github.com/RobinKuiper/Roll20APIScripts/tree/master/StatusInfo', styles.textButton)+' it works great with this script.', '', 'gm');
@@ -1477,20 +1781,20 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     checkInstall = () => {
-        if(!_.has(state, state_name)){
-            state[state_name] = state[state_name] || {};
+        if(!_.has(state, combatState)){
+            state[combatState] = state[combatState] || {};
         }
         setDefaults();
         checkStatusInfo();
 
-        log(script_name + ' Ready! Command: !'+state[state_name].config.command);
-        if(state[state_name].config.debug){
+        log(script_name + ' Ready! Command: !'+state[combatState].config.command);
+        if(state[combatState].config.debug){
 			makeAndSendMenu(script_name + ' Ready! Debug On.', '', 'gm');
         }
     },
 
     handeIniativePageChange = (obj,prev) => {
-        if(state[state_name].config.close_stop && (obj.get('initiativepage') !== prev.initiativepage && !obj.get('initiativepage'))){
+        if(state[combatState].config.close_stop && (obj.get('initiativepage') !== prev.initiativepage && !obj.get('initiativepage'))){
             stopCombat();
         }
     },
@@ -1506,33 +1810,212 @@ var CombatTracker = CombatTracker || (function() {
             handler(obj,prev);
         });
     },
+    
+    handleTurnorderChange = (obj, prev) => {
+        if (debug) {
+            log("Handle Turnorder Change")
+        }
+        
+        if(obj.get('turnorder') === prev.turnorder) return;
 
+        let turnorder = (obj.get('turnorder') === "") ? [] : JSON.parse(obj.get('turnorder'));
+        let prevTurnorder = (prev.turnorder === "") ? [] : JSON.parse(prev.turnorder);
+
+        if(obj.get('turnorder') === "[]"){
+            resetMarker();
+            stopTimer();
+            return;
+        }
+
+        if(turnorder.length && prevTurnorder.length && turnorder[0].id !== prevTurnorder[0].id){
+            doTurnorderChange();
+        }
+    },
+
+    handleGraphicMovement = (obj /*, prev */) => {
+        if(!inFight()) return;
+
+        if(getCurrentTurn().id === obj.get('id')){
+            changeMarker(obj);
+        }
+
+        // if (state[combatState].config.next_marker) {
+        //     if (getNextTurn()) {
+        //         if (getNextTurn().id === obj.get('id') {
+        //             changeMarker(obj, true);
+        //         }    
+        //     }
+        // }
+        // if(getNextTurn().id === obj.get('id')){
+        //     changeMarker(obj, true);
+        // }
+    },
+
+    handleShapedSheet = (characterid, condition, add) => {
+        let character = getObj('character', characterid);
+        if(character){
+            let sheet = getAttrByName(character.get('id'), 'character_sheet', 'current');
+            if(!sheet || !sheet.toLowerCase().includes('shaped')) return;
+            if(!shaped_conditions.includes(condition)) return;
+
+            let attributes = {};
+            attributes[condition] = (add) ? '1': '0';
+            setAttrs(character.get('id'), attributes);
+        }
+    },
+    
+    handleStatusMarkerChange = (obj, prev) => {
+        if (debug) {
+            log ('Handle Status Marker Change')
+        } 
+
+        prev.statusmarkers = (typeof prev.get === 'function') ? prev.get('statusmarkers') : prev.statusmarkers;
+
+        if(state[statusState].config.showDescOnStatusChange && typeof prev.statusmarkers === 'string'){
+            // Check if the statusmarkers string is different from the previous statusmarkers string.
+            if(obj.get('statusmarkers') !== prev.statusmarkers){
+                // Create arrays from the statusmarkers strings.
+                var prevstatusmarkers = prev.statusmarkers.split(",");
+                var statusmarkers = obj.get('statusmarkers').split(",");
+                if (debug) {
+                    log('New Statuses:'+statusmarkers)
+                    log('Old Statuses:'+prevstatusmarkers)
+                }
+                // Loop through the statusmarkers array.
+                statusmarkers.forEach(function(marker){
+                    let condition = getConditionByMarker(marker);
+                    if(!condition) return;
+                    // If it is a new statusmarkers, add condition to combat state 
+                    if(marker !== "" && !prevstatusmarkers.includes(marker)){
+                        addCondition(obj, condition.name.toLowerCase());
+                    }
+                });
+                //loop through previous statusmarkers array
+                prevstatusmarkers.forEach((marker) => {
+                    let condition = getConditionByMarker(marker);
+                    if(!condition) return;
+                    
+                    // if it is a remove statusmarker, remove it from combat state
+                    if(marker !== '' && !statusmarkers.includes(marker)){
+                        removeCondition(obj, condition.name.toLowerCase());
+                    }
+                })
+            }
+        }
+    },
+
+    // handleAttributeChange = (obj, prev) => {
+    //     if(!shaped_conditions.includes(obj.get('name'))) return;
+
+    //     let tokens = findObjs({ represents: obj.get('characterid') });
+
+    //     handleConditions([obj.get('name')], tokens, (obj.get('current') === '1') ? 'add' : 'remove')
+    // },
+
+    //return an array of objects according to key, value, or key and value matching
+    getObjects = (obj, key, val) => {
+        var objects = [];
+        for (var i in obj) {
+            if (!obj.hasOwnProperty(i)) continue;
+            if (typeof obj[i] == 'object') {
+                objects = objects.concat(getObjects(obj[i], key, val));    
+            } else 
+            //if key matches and value matches or if key matches and value is not passed (eliminating the case where key matches but passed value does not)
+            if (i == key && obj[i] == val || i == key && val == '') { //
+                objects.push(obj);
+            } else if (obj[i] == val && key == ''){
+                //only add if the object is not already in the array
+                if (objects.lastIndexOf(obj) == -1){
+                    objects.push(obj);
+                }
+            }
+        }
+        return objects;
+    },
+
+    
+    esRE = function (s) {
+        var escapeForRegexp = /(\\|\/|\[|\]|\(|\)|\{|\}|\?|\+|\*|\||\.|\^|\$)/g;
+        return s.replace(escapeForRegexp,"\\$1");
+    },
+
+    HE = (function(){
+        var entities={
+                //' ' : '&'+'nbsp'+';',
+                '<' : '&'+'lt'+';',
+                '>' : '&'+'gt'+';',
+                "'" : '&'+'#39'+';',
+                '@' : '&'+'#64'+';',
+                '{' : '&'+'#123'+';',
+                '|' : '&'+'#124'+';',
+                '}' : '&'+'#125'+';',
+                '[' : '&'+'#91'+';',
+                ']' : '&'+'#93'+';',
+                '"' : '&'+'quot'+';'
+            },
+            re=new RegExp('('+_.map(_.keys(entities),esRE).join('|')+')','g');
+        return function(s){
+            return s.replace(re, function(c){ return entities[c] || c; });
+        };
+    }()),
+
+
+    ucFirst = (string) => {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    },
+
+    
     registerEventHandlers = () => {
         on('chat:message', handleInput);
         on('change:campaign:turnorder', handleTurnorderChange);
+        on('change:graphic:statusmarkers', handleStatusMarkerChange);
+//        on('change:attribute', handleAttributeChange);		
         on('change:campaign:initiativepage', handeIniativePageChange);
         on('change:graphic:top', handleGraphicMovement);
         on('change:graphic:left', handleGraphicMovement);
         on('change:graphic:layer', handleGraphicMovement);
-        on('change:graphic:statusmarkers', handleStatusMarkerChange);
 
         if('undefined' !== typeof TokenMod && TokenMod.ObserveTokenChange){
             TokenMod.ObserveTokenChange(function(obj,prev){
                 handleStatusMarkerChange(obj,prev);
             });
         }
-    },
 
+        if('undefined' !== typeof DeathTracker && DeathTracker.ObserveTokenChange){
+            DeathTracker.ObserveTokenChange((obj,prev) => {
+                handleStatusMarkerChange(obj,prev);
+            });
+        }
+
+        if('undefined' !== typeof InspirationTracker && InspirationTracker.ObserveTokenChange){
+            InspirationTracker.ObserveTokenChange((obj,prev) => {
+                handleStatusMarkerChange(obj,prev);
+            });
+        }
+
+        // if('undefined' !== typeof CombatTracker && CombatTracker.ObserveTokenChange){
+        //     CombatTracker.ObserveTokenChange((obj,prev) => {
+        //         handleStatusMarkerChange(obj,prev);
+        //     });
+        // }		
+    },
+	
     setDefaults = (reset) => {
-        const defaults = {
+	
+		log('Defaults')
+		
+        const combatDefaults = {
             config: {
                 command: 'ct',
-                marker_img: 'https://s3.amazonaws.com/files.d20.io/images/52550079/U-3U950B3wk_KRtspSPyuw/thumb.png?1524507826',
-                next_marker: false,
-                next_marker_img: 'https://s3.amazonaws.com/files.d20.io/images/66352183/90UOrT-_Odg2WvvLbKOthw/thumb.png?1541422636',
-                initiative_attribute_name: 'initiative_bonus',
-                close_stop: true,
-                pull: true,
+			    marker_img: 'https://s3.amazonaws.com/files.d20.io/images/52550079/U-3U950B3wk_KRtspSPyuw/thumb.png?1524507826',
+				next_marker: false,
+				next_marker_img: 'https://s3.amazonaws.com/files.d20.io/images/66352183/90UOrT-_Odg2WvvLbKOthw/thumb.png?1541422636',
+				initiative_attribute_name: 'initiative_bonus',
+				close_stop: true,
+				pull: true,			
+				duration: false,
+				favorite: false,
+				returnToTracker: false,
                 turnorder: {
                     throw_initiative: true,
                     ini_die: 20,
@@ -1565,139 +2048,323 @@ var CombatTracker = CombatTracker || (function() {
                     macro_name: 'CT_TURN'
                 }
             },
-            conditions: {},
-            favorites: {}
+            conditions: []
         };
 
-        if(!state[state_name].config){
-            state[state_name].config = defaults.config;
+        if(!state[combatState].config){
+            state[combatState].config = combatDefaults.config;
         }else{
-            if(!state[state_name].config.hasOwnProperty('command')){
-                state[state_name].config.command = defaults.config.command;
+            if(!state[combatState].config.hasOwnProperty('command')){
+                state[combatState].config.command = combatDefaults.config.command;
+            }		
+			if(!state[combatState].config.hasOwnProperty('marker_img')){
+				state[combatState].config.marker_img = combatDefaults.config.marker_img;
+			}
+			if(!state[combatState].config.hasOwnProperty('next_marker')){
+				state[combatState].config.next_marker = combatDefaults.config.next_marker;
+			}
+			if(!state[combatState].config.hasOwnProperty('next_marker_img')){
+				state[combatState].config.next_marker_img = combatDefaults.config.next_marker_img;
+			}
+			if(!state[combatState].config.hasOwnProperty('initiative_attribute_name')){
+				state[combatState].config.initiative_attribute_name = combatDefaults.config.initiative_attribute_name;
+			}
+			if(!state[combatState].config.hasOwnProperty('close_stop')){
+				state[combatState].config.close_stop = combatDefaults.config.close_stop;
+			}
+			if(!state[combatState].config.hasOwnProperty('pull')){
+				state[combatState].config.pull = combatDefaults.config.pull;
+			}
+			if(!state[combatState].config.hasOwnProperty('favorite')){
+				state[combatState].config.favorite = combatDefaults.config.favorite;
+			}  		
+			if(!state[combatState].config.hasOwnProperty('returnToTracker')){
+				state[combatState].config.returnToTracker = combatDefaults.config.returnToTracker;
+			}  		
+			
+						
+            if(!state[combatState].config.hasOwnProperty('turnorder')){
+                state[combatState].config.turnorder = combatDefaults.config.turnorder;
+            }else{
+                if(!state[combatState].config.turnorder.hasOwnProperty('skip_custom')){
+                    state[combatState].config.turnorder.skip_custom = combatDefaults.config.turnorder.skip_custom;
+                }
+                if(!state[combatState].config.turnorder.hasOwnProperty('throw_initiative')){
+                    state[combatState].config.turnorder.throw_initiative = combatDefaults.config.turnorder.throw_initiative;
+                }
+                if(!state[combatState].config.turnorder.hasOwnProperty('ini_die')){
+                    state[combatState].config.turnorder.ini_die = combatDefaults.config.turnorder.ini_die;
+                }
+                if(!state[combatState].config.turnorder.hasOwnProperty('auto_sort')){
+                    state[combatState].config.turnorder.auto_sort = combatDefaults.config.turnorder.auto_sort;
+                }
+                if(!state[combatState].config.hasOwnProperty('reroll_ini_round')){
+                    state[combatState].config.turnorder.reroll_ini_round = combatDefaults.config.turnorder.reroll_ini_round;
+                }
             }
-            if(!state[state_name].config.hasOwnProperty('marker_img')){
-                state[state_name].config.marker_img = defaults.config.marker_img;
+			
+            if(!state[combatState].config.hasOwnProperty('timer')){
+                state[combatState].config.timer = combatDefaults.config.timer;
+            }else{
+                if(!state[combatState].config.timer.hasOwnProperty('use_timer')){
+                    state[combatState].config.timer.use_timer = combatDefaults.config.timer.use_timer;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('time')){
+                    state[combatState].config.timer.time = combatDefaults.config.timer.time;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('auto_skip')){
+                    state[combatState].config.timer.auto_skip = combatDefaults.config.timer.auto_skip;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('chat_timer')){
+                    state[combatState].config.timer.chat_timer = combatDefaults.config.timer.chat_timer;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('token_timer')){
+                    state[combatState].config.timer.token_timer = combatDefaults.config.timer.token_timer;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('token_font')){
+                    state[combatState].config.timer.token_font = combatDefaults.config.timer.token_font;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('token_font_size')){
+                    state[combatState].config.timer.token_font_size = combatDefaults.config.timer.token_font_size;
+                }
+                if(!state[combatState].config.timer.hasOwnProperty('token_font_color')){
+                    state[combatState].config.timer.token_font_color = combatDefaults.config.timer.token_font_color;
+                }
             }
-            if(!state[state_name].config.hasOwnProperty('next_marker')){
-                state[state_name].config.next_marker = defaults.config.next_marker;
+			
+            if(!state[combatState].config.hasOwnProperty('announcements')){
+                state[combatState].config.announcements = combatDefaults.config.announcements;
+            }else{
+                if(!state[combatState].config.announcements.hasOwnProperty('announce_turn')){
+                    state[combatState].config.announcements.announce_turn = combatDefaults.config.announcements.announce_turn;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('whisper_turn_gm')){
+                    state[combatState].config.announcements.whisper_turn_gm = combatDefaults.config.announcements.whisper_turn_gm;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('announce_round')){
+                    state[combatState].config.announcements.announce_round = combatDefaults.config.announcements.announce_round;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('announce_conditions')){
+                    state[combatState].config.announcements.announce_conditions = combatDefaults.config.announcements.announce_conditions;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('handleLongName')){
+                    state[combatState].config.announcements.handleLongName = combatDefaults.config.announcements.handleLongName;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('use_fx')){
+                    state[combatState].config.announcements.use_fx = combatDefaults.config.announcements.use_fx;
+                }
+                if(!state[combatState].config.announcements.hasOwnProperty('fx_type')){
+                    state[combatState].config.announcements.fx_type = combatDefaults.config.announcements.fx_type;
+                }
             }
-            if(!state[state_name].config.hasOwnProperty('next_marker_img')){
-                state[state_name].config.next_marker_img = defaults.config.next_marker_img;
+			
+            if(!state[combatState].config.hasOwnProperty('macro')){
+                state[combatState].config.macro = combatDefaults.config.macro;
+            }else{
+                if(!state[combatState].config.macro.hasOwnProperty('run_macro')){
+                    state[combatState].config.macro.run_macro = combatDefaults.config.macro.run_macro;
+                }
+                if(!state[combatState].config.macro.hasOwnProperty('macro_name')){
+                    state[combatState].config.macro.macro_name = combatDefaults.config.macro.macro_name;
+                }
             }
-            if(!state[state_name].config.hasOwnProperty('initiative_attribute_name')){
-                state[state_name].config.initiative_attribute_name = defaults.config.initiative_attribute_name;
+        }
+
+        if(!state[combatState].hasOwnProperty('conditions')){
+            state[combatState].conditions = combatDefaults.conditions;
+        }
+
+        const statusDefaults = {
+            config: {
+                command: 'condition',
+                userAllowed: false,
+                userToggle: false,
+                sendOnlyToGM: false,
+                showDescOnStatusChange: true,
+                showIconInDescription: true,
+                showConditions: 'All'
+            },
+            conditions: {
+                blinded: {
+                    name: 'Blinded',
+                    description: '<p>A blinded creature can’t see and automatically fails any ability check that requires sight.</p> <p>Attack rolls against the creature have advantage, and the creature’s Attack rolls have disadvantage.</p>',
+                    icon: 'bleeding-eye',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                charmed: {
+                    name: 'Charmed',
+                    description: '<p>A charmed creature can’t Attack the charmer or target the charmer with harmful Abilities or magical effects.</p> <p>The charmer has advantage on any ability check to interact socially with the creature.</p>',
+                    icon: 'broken-heart',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                deafened: {
+                    name: 'Deafened',
+                    description: '<p>A deafened creature can’t hear and automatically fails any ability check that requires hearing.</p>',
+                    icon: 'edge-crack',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                frightened: {
+                    name: 'Frightened',
+                    description: '<p>A frightened creature has disadvantage on Ability Checks and Attack rolls while the source of its fear is within line of sight.</p> <p>The creature can’t willingly move closer to the source of its fear.</p>',
+                    icon: 'screaming',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                grappled: {
+                    name: 'Grappled',
+                    description: '<p>A grappled creature’s speed becomes 0, and it can’t benefit from any bonus to its speed.</p> <p>The condition ends if the Grappler is <i>incapacitated</i>.</p> <p>The condition also ends if an effect removes the grappled creature from the reach of the Grappler or Grappling effect, such as when a creature is hurled away by the Thunderwave spell.</p>',
+                    icon: 'grab',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                incapacitated: {
+                    name: 'Incapacitated',
+                    description: '<p>An incapacitated creature can’t take actions or reactions.</p>',
+                    icon: 'interdiction',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                inspiration: {
+                    name: 'Inspiration',
+                    description: '<p>If you have inspiration, you can expend it when you make an Attack roll, saving throw, or ability check. Spending your inspiration gives you advantage on that roll.</p> <p>Additionally, if you have inspiration, you can reward another player for good roleplaying, clever thinking, or simply doing something exciting in the game. When another player character does something that really contributes to the story in a fun and interesting way, you can give up your inspiration to give that character inspiration.</p>',
+                    icon: 'black-flag',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                invisibility: {
+                    name: 'Invisibility',
+                    description: '<p>An invisible creature is impossible to see without the aid of magic or a Special sense. For the purpose of Hiding, the creature is heavily obscured. The creature’s location can be detected by any noise it makes or any tracks it leaves.</p> <p>Attack rolls against the creature have disadvantage, and the creature’s Attack rolls have advantage.</p>',
+                    icon: 'ninja-mask',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                paralyzed: {
+                    name: 'Paralyzed',
+                    description: '<p>A paralyzed creature is <i>incapacitated</i> and can’t move or speak.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
+                    icon: 'pummeled',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                petrified: {
+                    name: 'Petrified',
+                    description: '<p>A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance (usually stone). Its weight increases by a factor of ten, and it ceases aging.</p> <p>The creature is <i>incapacitated</i>, can’t move or speak, and is unaware of its surroundings.</p> <p>Attack rolls against the creature have advantage.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>The creature has Resistance to all damage.</p> <p>The creature is immune to poison and disease, although a poison or disease already in its system is suspended, not neutralized.</p>',
+                    icon: 'frozen-orb',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                poisoned: {
+                    name: 'Poisoned',
+                    description: '<p>A poisoned creature has disadvantage on Attack rolls and Ability Checks.</p>',
+                    icon: 'chemical-bolt',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                prone: {
+                    name: 'Prone',
+                    description: '<p>A prone creature’s only Movement option is to crawl, unless it stands up and thereby ends the condition.</p> <p>The creature has disadvantage on Attack rolls.</p> <p>An Attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the Attack roll has disadvantage.</p>',
+                    icon: 'back-pain',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                restrained: {
+                    name: 'Restrained',
+                    description: '<p>A restrained creature’s speed becomes 0, and it can’t benefit from any bonus to its speed.</p> <p>Attack rolls against the creature have advantage, and the creature’s Attack rolls have disadvantage.</p> <p>The creature has disadvantage on Dexterity saving throws.</p>',
+                    icon: 'fishing-net',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                stunned: {
+                    name: 'Stunned',
+                    description: '<p>A stunned creature is <i>incapacitated</i>, can’t move, and can speak only falteringly.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p>',
+                    icon: 'fist',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+                unconscious: {
+                    name: 'Unconscious',
+                    description: '<p>An unconscious creature is <i>incapacitated</i>, can’t move or speak, and is unaware of its surroundings.</p> <p>The creature drops whatever it’s holding and falls prone.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
+                    icon: 'sleepy',
+                    duration: 1,
+					direction: -1,
+					override: true,
+					favorite: false
+                },
+            },
+        };
+
+        if(!state[statusState].config){
+            state[statusState].config = statusDefaults.config;
+        }else{
+            if(!state[statusState].config.hasOwnProperty('command')){
+                state[statusState].config.command = statusDefaults.config.command;
             }
-            if(!state[state_name].config.hasOwnProperty('close_stop')){
-                state[state_name].config.close_stop = defaults.config.close_stop;
+            if(!state[statusState].config.hasOwnProperty('userAllowed')){
+                state[statusState].config.userAllowed = statusDefaults.config.userAllowed;
             }
-            if(!state[state_name].config.hasOwnProperty('pull')){
-                state[state_name].config.pull = defaults.config.pull;
+            if(!state[statusState].config.hasOwnProperty('userToggle')){
+                state[statusState].config.userToggle = statusDefaults.config.userToggle;
             }
-            if(!state[state_name].config.hasOwnProperty('duration')){
-                state[state_name].config.duration = defaults.config.duration;
+            if(!state[statusState].config.hasOwnProperty('sendOnlyToGM')){
+                state[statusState].config.sendOnlyToGM = statusDefaults.config.sendOnlyToGM;
+            }
+            if(!state[statusState].config.hasOwnProperty('showDescOnStatusChange')){
+                state[statusState].config.showDescOnStatusChange = statusDefaults.config.showDescOnStatusChange;
+            }
+            if(!state[statusState].config.hasOwnProperty('showIconInDescription')){
+                state[statusState].config.showIconInDescription = statusDefaults.config.showIconInDescription;
+            }
+            if(!state[statusState].config.hasOwnProperty('showConditions')){
+                state[statusState].config.showConditions = statusDefaults.config.showConditions;
             }            
-            if(!state[state_name].config.hasOwnProperty('turnorder')){
-                state[state_name].config.turnorder = defaults.config.turnorder;
-            }else{
-                if(!state[state_name].config.turnorder.hasOwnProperty('skip_custom')){
-                    state[state_name].config.turnorder.skip_custom = defaults.config.turnorder.skip_custom;
-                }
-                if(!state[state_name].config.turnorder.hasOwnProperty('throw_initiative')){
-                    state[state_name].config.turnorder.throw_initiative = defaults.config.turnorder.throw_initiative;
-                }
-                if(!state[state_name].config.turnorder.hasOwnProperty('ini_die')){
-                    state[state_name].config.turnorder.ini_die = defaults.config.turnorder.ini_die;
-                }
-                if(!state[state_name].config.turnorder.hasOwnProperty('auto_sort')){
-                    state[state_name].config.turnorder.auto_sort = defaults.config.turnorder.auto_sort;
-                }
-                if(!state[state_name].config.hasOwnProperty('reroll_ini_round')){
-                    state[state_name].config.turnorder.reroll_ini_round = defaults.config.turnorder.reroll_ini_round;
-                }
-            }
-            if(!state[state_name].config.hasOwnProperty('timer')){
-                state[state_name].config.timer = defaults.config.timer;
-            }else{
-                if(!state[state_name].config.timer.hasOwnProperty('use_timer')){
-                    state[state_name].config.timer.use_timer = defaults.config.timer.use_timer;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('time')){
-                    state[state_name].config.timer.time = defaults.config.timer.time;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('auto_skip')){
-                    state[state_name].config.timer.auto_skip = defaults.config.timer.auto_skip;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('chat_timer')){
-                    state[state_name].config.timer.chat_timer = defaults.config.timer.chat_timer;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('token_timer')){
-                    state[state_name].config.timer.token_timer = defaults.config.timer.token_timer;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('token_font')){
-                    state[state_name].config.timer.token_font = defaults.config.timer.token_font;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('token_font_size')){
-                    state[state_name].config.timer.token_font_size = defaults.config.timer.token_font_size;
-                }
-                if(!state[state_name].config.timer.hasOwnProperty('token_font_color')){
-                    state[state_name].config.timer.token_font_color = defaults.config.timer.token_font_color;
-                }
-            }
-            if(!state[state_name].config.hasOwnProperty('announcements')){
-                state[state_name].config.announcements = defaults.config.announcements;
-            }else{
-                if(!state[state_name].config.announcements.hasOwnProperty('announce_turn')){
-                    state[state_name].config.announcements.announce_turn = defaults.config.announcements.announce_turn;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('whisper_turn_gm')){
-                    state[state_name].config.announcements.whisper_turn_gm = defaults.config.announcements.whisper_turn_gm;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('announce_round')){
-                    state[state_name].config.announcements.announce_round = defaults.config.announcements.announce_round;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('announce_conditions')){
-                    state[state_name].config.announcements.announce_conditions = defaults.config.announcements.announce_conditions;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('handleLongName')){
-                    state[state_name].config.announcements.handleLongName = defaults.config.announcements.handleLongName;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('use_fx')){
-                    state[state_name].config.announcements.use_fx = defaults.config.announcements.use_fx;
-                }
-                if(!state[state_name].config.announcements.hasOwnProperty('fx_type')){
-                    state[state_name].config.announcements.fx_type = defaults.config.announcements.fx_type;
-                }
-            }
-            if(!state[state_name].config.hasOwnProperty('macro')){
-                state[state_name].config.macro = defaults.config.macro;
-            }else{
-                if(!state[state_name].config.macro.hasOwnProperty('run_macro')){
-                    state[state_name].config.macro.run_macro = defaults.config.macro.run_macro;
-                }
-                if(!state[state_name].config.macro.hasOwnProperty('macro_name')){
-                    state[state_name].config.macro.macro_name = defaults.config.macro.macro_name;
-                }
-            }
         }
 
-        if(!state[state_name].hasOwnProperty('conditions')){
-            state[state_name].conditions = defaults.conditions;
+        if(!state[statusState].conditions || typeof state[statusState].conditions !== 'object'){
+            state[statusState].conditions = statusDefaults.conditions;
         }
 
-        if(!state[state_name].hasOwnProperty('favorites')){
-            state[state_name].favorites = defaults.favorites;
-        }
-
-        if(!state[state_name].config.hasOwnProperty('firsttime') && !reset){
-            sendConfigMenu(true);
-            state[state_name].config.firsttime = false;
-        }
+//        sendConfigMenu();
     };
 
     return {
         CheckInstall: checkInstall,
         RegisterEventHandlers: registerEventHandlers,
-        ObserveTokenChange: observeTokenChange
+        ObserveTokenChange: observeTokenChange,
+        getConditions,
+        getConditionByKey,
+        // handleConditions,
+        sendConditionToChat,
+        getIcon	
     };
 })();
 
@@ -1708,10 +2375,3 @@ on('ready',function() {
     CombatTracker.RegisterEventHandlers();
 });
 
-/*
-conditions = {
-    54235346534564: [
-        { name: 'prone', duration: '1' }
-    ]
-}
-*/

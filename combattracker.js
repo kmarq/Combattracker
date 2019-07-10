@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.7 Beta
+ * Version 1.0.8 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -28,7 +28,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.7 Beta',
+	    version = '1.0.8 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -465,17 +465,16 @@ var CombatTracker = CombatTracker || (function() {
         
         if(timerObj) timerObj.remove();
 
-        state[combatState].conditions.forEach(condition => {
+        state[combatState].conditions.forEach((condition,i) => {
             log(condition)
+            log(getOrCreateMarker().get('id'))
             if (condition.id != getOrCreateMarker().get('id')) {
                 token           = getObj('graphic', condition.id)
-                statusmarkers   = token.get('statusmarkers').split(",");
-                statusmarkers.forEach (marker  => {
-                    token.set('status_'+marker, false); 
-                })
+                token.set('status_'+condition.icon, false); 
+                
             }  
         }) 
-
+        state[combatState].conditions = [];
         removeMarkers();
         stopTimer();
         paused = false;
@@ -1499,38 +1498,6 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents, 'Condition Setup');
     },
 
-    // sendConditionList = (selected, show_names) => {
-    //     let contents = '';
-    //     if(selected && selected.length){
-    //         selected.forEach(s => {
-    //             let token = getObj(s._type, s._id);
-    //             if(token && token.get('statusmarkers') !== ''){
-    //                 let statusmarkers = token.get('statusmarkers').split(',');
-    //                 let active_conditions = [];
-    //                 statusmarkers.forEach(marker => {
-    //                     let con;
-    //                     if(con = getObjects(state[statusState].conditions, 'icon', marker)){
-    //                         if(con[0] && con[0].name) active_conditions.push(con[0].name);
-    //                     }
-    //                 });
-
-    //                 if(active_conditions.length){
-    //                     contents += '<b>'+token.get('name') + '\'s Conditions:</b><br><i>' + active_conditions.join(', ') + '</i><hr>';
-    //                 }
-    //             }
-    //         });
-    //     }
-
-    //     contents += 'Toggle Condition on Selected Token(s):<br>'
-    //     for(let condition_key in state[statusState].conditions){
-    //         let condition = state[statusState].conditions[condition_key];
-    //         contents += makeButton(getIcon(condition.icon) || condition.name, '!' + state[statusState].config.command + ' toggle '+condition_key, buttonStyle + 'float: none; margin-right: 5px;', condition.name);
-    //     }
-    //     //contents += (!show_names) ? '<br>' + makeButton('Show Names', '!' + state[statusState].config.command + ' names', buttonStyle + 'float: none;') : '<br>' + makeButton('Hide Names', '!' + state[statusState].config.command, buttonStyle + 'float: none;');
-
-    //     makeAndSendMenu(contents, script_name + ' Menu');
-    // },
-	
     sendTrackerMenu = () => {
         let nextButton          = makeImageButton('!ct next b',nextImage,'Next Turn','transparent',18),
             prevButton          = makeImageButton('!ct prev b',prevImage,'Previous Turn','transparent',18),

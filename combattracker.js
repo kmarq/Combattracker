@@ -587,7 +587,7 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     rollInitiative = (selectedTokens) => {
-        let tokenObj, whisper, initiativeTemp, initiativeRoll, characterObj, initAttributes, initiativeMod, i, advantageAttrib, initiativeAdv1, initiativAdv2
+        let tokenObj, whisper, initiativeTemp, initiativeRoll, characterObj, initAttributes, initiativeMod, i, advantageAttrib, initiativeAdv1, initiativeAdv2
         
         //loop through selected tokens
         selectedTokens.forEach(token => {
@@ -1654,7 +1654,7 @@ var CombatTracker = CombatTracker || (function() {
     checkInstall = () => {
         if(!_.has(state, combatState)){
             state[combatState] = state[combatState] || {};
-            state[statusState] = state[combatState] || {};
+            state[statusState] = state[statusState] || {};
         }
         setDefaults();
         log(script_name + ' Ready! Command: !'+state[combatState].config.command);

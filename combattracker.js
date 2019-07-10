@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.8 Beta
+ * Version 1.0.9 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -13,22 +13,11 @@
  * Patreon: https://patreon.com/robinkuiper
  * Paypal.me: https://www.paypal.me/robinkuiper
 */
-
-/* TODO
- *
- * Styling
- * More chat message options
- * Show menu with B shows always
- * Add icon if not StatusInfo (?)    (IF YES, remove conditions on statusmarker remove)
- * Edit Conditions
-*/
-/* globals StatusInfo, TokenMod */
-
 var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.8 Beta',
+	    version = '1.0.9 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -1662,27 +1651,13 @@ var CombatTracker = CombatTracker || (function() {
         return '<div style="vertical-align:middle;'+iconStyle+'">'+X+'</div>';
     },
     
-    checkStatusInfo = () => {
-        if(typeof StatusInfo === 'undefined'){
-            makeAndSendMenu('Consider installing '+makeButton('StatusInfo', 'https://github.com/RobinKuiper/Roll20APIScripts/tree/master/StatusInfo', styles.textButton)+' it works great with this script.', '', 'gm');
-            return;
-        }
-
-
-        extensions.StatusInfo = true;
-    },
-
     checkInstall = () => {
         if(!_.has(state, combatState)){
             state[combatState] = state[combatState] || {};
+            state[statusState] = state[combatState] || {};
         }
         setDefaults();
-        checkStatusInfo();
-
         log(script_name + ' Ready! Command: !'+state[combatState].config.command);
-        if(state[combatState].config.debug){
-			makeAndSendMenu(script_name + ' Ready! Debug On.', '', 'gm');
-        }
     },
 
     handeIniativePageChange = (obj,prev) => {

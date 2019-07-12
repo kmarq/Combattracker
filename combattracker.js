@@ -20,7 +20,7 @@ var CombatTracker = CombatTracker || (function() {
 	    version = '1.0.10 Beta',
         timerObj,
         intervalHandle,
-        debug = false,
+        debug = true,
         rotationInterval,
         paused = false,
         observers = {
@@ -1494,7 +1494,7 @@ var CombatTracker = CombatTracker || (function() {
             stopButton          = makeImageButton('!ct stop b',stopImage,'Stop Combat','transparent',18),
             startButton         = makeImageButton('!ct start b',startImage,'Start Combat','transparent',18),
             pauseTimerButton    = makeImageButton('!ct pt b',pauseImage,'Pause Timer','transparent',18),
-            stopTimerButton     = makeImageButton('!ct st b',timerImage,'Pause Timer','transparent',18),
+            stopTimerButton     = makeImageButton('!ct st b',timerImage,'Stop Timer','transparent',18),
             allConditionsButton = makeImageButton('!ct all b',allConditionsImage,'Show All Conditions','transparent',18),
             favoritesButton     = makeImageButton('!ct fav b',favoriteImage,'Show Favorites','transparent',18),
             configButton        = makeImageButton('!ct tracker b',backImage,'Show Setup','transparent',18),

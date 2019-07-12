@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.9 Beta
+ * Version 1.0.10 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,10 +17,10 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.9 Beta',
+	    version = '1.0.10 Beta',
         timerObj,
         intervalHandle,
-        debug = true,
+        debug = false,
         rotationInterval,
         paused = false,
         observers = {
@@ -591,7 +591,6 @@ var CombatTracker = CombatTracker || (function() {
         
         //loop through selected tokens
         selectedTokens.forEach(token => {
-            
             if (token._type == 'graphic') {
                 // get token and character objects
                 tokenObj        = getObj('graphic', token._id)
@@ -622,21 +621,23 @@ var CombatTracker = CombatTracker || (function() {
                                 initiativeRoll = initiativeAdv2
                             }
                             //pass in both values and modifier for display
-                            if (state[combatState].config.turnorder.show_initiative_roll){
-                                sendInitiativeChat(token.get('name'),initiativeAdv1,initiativeMod,initiativeAdv2,whisper)                            
+                            if (state[combatState].config.turnorder.show_initiative_roll) {
+                                sendInitiativeChat(tokenObj.get('name'),initiativeAdv1,initiativeMod,initiativeAdv2,whisper)                            
                             }
                         } else if (state[combatState].config.turnorder.show_initiative_roll) { 
                             // if not rolling advantage, use first roll
                             initiativeRoll = initiativeRoll1
-                            sendInitiativeChat(token.get('name'),initiativeRoll1,initiativeMod,null,whisper)                              
+                            sendInitiativeChat(tokenObj.get('name'),initiativeRoll1,initiativeMod,null,whisper)                              
                         }    
                     }  else if (state[combatState].config.turnorder.show_initiative_roll) { 
                         // if everything else then pass in for display
-                         sendInitiativeChat(token.get('name'),initiativeRoll,initiativeMod,null,whisper)   
+                         sendInitiativeChat(tokenObj.get('name'),initiativeRoll,initiativeMod,null,whisper)   
                     }  
                     //add to turnorder 
-                    log("Token Id:" + tokenObj.id)
-                    log("Token Page:" + tokenObj.get("pageid"))
+                    if (debug) {
+                        log("Token Id:" + tokenObj.id)
+                        log("Token Page:" + tokenObj.get("pageid"))
+                    }    
                     addToTurnorder({id:tokenObj.id,pr:initiativeMod+initiativeRoll,custom:'',pageid:tokenObj.get("pageid")});
                 }   
             }    
@@ -1700,6 +1701,10 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     handleGraphicMovement = (obj /*, prev */) => {
+         if (debug) {
+            log ('Handle Graphic Movement')
+        } 
+ 
         if(!inFight()) return;
 
         if(getCurrentTurn().id === obj.get('id')){
@@ -1719,6 +1724,9 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     handleShapedSheet = (characterid, condition, add) => {
+        if (debug) {
+            log ('Handle Shaped Sheet Change')
+        } 
         let character = getObj('character', characterid);
         if(character){
             let sheet = getAttrByName(character.get('id'), 'character_sheet', 'current');

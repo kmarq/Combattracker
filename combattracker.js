@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.10 Beta
+ * Version 1.0.11 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.10 Beta',
+	    version = '1.0.11 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -707,9 +707,9 @@ var CombatTracker = CombatTracker || (function() {
             log('ID:' + turn.id)
         }
         if (turn.id === '-1') { 
-            // if (turn.formula) {
-            //     updatePR(turn, parseInt(turn.formula));
-            // }
+            if (turn.formula) {
+                updatePR(turn, parseInt(turn.formula));
+            }
             if (!state[combatState].config.turnorder.skip_custom) {
                 resetMarker();
             } else {
@@ -945,6 +945,9 @@ var CombatTracker = CombatTracker || (function() {
     },
     
     NextTurn = () => {
+        if (debug) {
+            log('Next Turn')
+        }
         let turnorder, currentTurn
         //get turnorder and remove top turn
         turnorder = getTurnorder(),
@@ -1926,7 +1929,7 @@ var CombatTracker = CombatTracker || (function() {
             conditions: []
         };
 
-        if(!state[combatState].config){
+        if(!state[combatState].hasOwnProperty('config')){
             state[combatState].config = combatDefaults.config;
         }else{
             if(!state[combatState].config.hasOwnProperty('command')){
@@ -2198,7 +2201,7 @@ var CombatTracker = CombatTracker || (function() {
             },
         };
 
-        if(!state[statusState].config){
+        if(!state[statusState].hasOwnProperty('config')){
             state[statusState].config = statusDefaults.config;
         }else{
             if(!state[statusState].config.hasOwnProperty('command')){
@@ -2224,7 +2227,7 @@ var CombatTracker = CombatTracker || (function() {
             }            
         }
 
-        if(!state[statusState].conditions || typeof state[statusState].conditions !== 'object'){
+        if(!state[statusState].hasOwnProperty('conditions')){
             state[statusState].conditions = statusDefaults.conditions;
         }
 
@@ -2249,4 +2252,3 @@ on('ready',function() {
     CombatTracker.CheckInstall();
     CombatTracker.RegisterEventHandlers();
 });
-

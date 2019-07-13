@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.11 Beta
+ * Version 1.0.12 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.11 Beta',
+	    version = '1.0.12 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -179,6 +179,17 @@ var CombatTracker = CombatTracker || (function() {
 					removeCommand(msg, args)
 				}
 				break;
+    //             case 'show': {
+    //                 // if(!msg.selected || !msg.selected.length){
+    //                 //     makeAndSendMenu('No tokens are selected.', '', 'gm');
+    //                 //     return;
+    //                 // }
+    
+    //                 // let tokens = msg.selected.map(s => getObj('graphic', s._id));
+    
+    //                 sendTokenConditionMenu(msg.selected, (args.shift() === 'p'));
+    // 			}
+                // break;				
 				default:
 				    log('default')
 					sendTrackerMenu();
@@ -1449,7 +1460,6 @@ var CombatTracker = CombatTracker || (function() {
                 message = message || '' + '<br>Multiple conditions use the same icon';
                 check = false;
             }
-            //icons.push(state[statusState].conditions[key].icon);
         }
 
         message = (message) ? '<p style="color: red">'+message+'</p>' : '';
@@ -1554,7 +1564,73 @@ var CombatTracker = CombatTracker || (function() {
         }
         makeAndSendMenu(contents+makeList(listItems),titleText,'gm');
     },
+    
+    // sendTokenConditionMenu = (tokens, toPlayers) => {
+    //     let name, imgurl, conditions, image, doneButton, delayButton, contents;
+       
+    //     //set up components
+    //     target       = (state[combatState].config.announcements.whisper_turn_gm) ? 'gm' : target;
+    //     name         = token.get('name');
+    //     imgurl       = token.get('imgsrc');
+    //     conditions   = getAnnounceConditions(token, prev, delay);
+    //     image        = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : ''
+    //     name         = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name,
+    //     deleteButton = makeImageButton('!ct remove',deleteImage,'Remove Condition','transparent',18)
 
+    //     // let conditions, contents = '<div>';
+
+    //     if (debug) {
+    //         log('Send Token Condition')
+    //     }
+
+    //     tokens.forEach(token => {
+            
+    //         if (token._type == 'graphic') {
+    //             conditions = _.filter(state[combatState].conditions, function(condition) {
+    //                             return condition.id = token._id
+    //                         })
+    //         }
+            
+    //         contents += '<span style="font-size: 12pt; font-weight: bold;"> '
+    //         contents += '<img src='+token.get('imgsrc')+' style="width: 32px; height: 32px; vertical-align: middle;"></span>'
+    //         contents += '<span style="vertical-align: middle;">'+token.get('name')+'</span>'
+         
+    //         if (!conditions) {
+                
+    //         }
+
+    //     })            
+
+
+
+
+    //     //     if(!conditions || !conditions.length){
+    //     //         contents += '<tr><td colspan="2" style="text-align: center;"><i>None</i></td></tr>';
+    //     //     }else{
+    //     //         conditions.forEach(condition => {
+    //     //             let si_condition = false;
+    //     //             if(extensions.StatusInfo){
+    //     //                 si_condition = StatusInfo.getConditionByName(condition.name) || false;
+    //     //             }
+
+    //     //             let removeButton = makeButton('<img src="https://s3.amazonaws.com/files.d20.io/images/11381509/YcG-o2Q1-CrwKD_nXh5yAA/thumb.png?1439051579" />', '!'+state[state_name].config.command + ' remove ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;');
+    //     //             let showButton = (condition.message || si_condition) ? makeButton('<img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699008-icon-22-eye-128.png" />', '!'+state[state_name].config.command + ' showcondition ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;') : '';
+    //     //             let name = condition.name;
+    //     //             name += (condition.duration) ? ' (' + condition.duration + ')' : '';
+    //     //             contents += ' \
+    //     //             <tr> \
+    //     //                 <td style="text-align: center">'+name+'</td> \
+    //     //                 <td>'+removeButton+showButton+'</td> \
+    //     //             </tr>';
+    //     //         });
+    //     //     }
+    //     // });
+
+    //     // contents += '</table>';
+
+    //     // makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
+    // },
+    
     makeAndSendMenu = (contents, title, whisper) => {
         whisper = (whisper && whisper !== '') ? '/w ' + whisper + ' ' : '';
 		title = makeTitle(title)
@@ -1929,7 +2005,7 @@ var CombatTracker = CombatTracker || (function() {
             conditions: []
         };
 
-        if(!state[combatState].hasOwnProperty('config')){
+        if(!state[combatState].config || typeof state[combatState].config == 'undefined') {
             state[combatState].config = combatDefaults.config;
         }else{
             if(!state[combatState].config.hasOwnProperty('command')){
@@ -2048,9 +2124,9 @@ var CombatTracker = CombatTracker || (function() {
             }
         }
 
-        if(!state[combatState].hasOwnProperty('conditions')){
-            state[combatState].conditions = combatDefaults.conditions;
-        }
+        // if(!state[combatState].hasOwnProperty('conditions')){
+        //     state[combatState].conditions = combatDefaults.conditions;
+        // }
 
         const statusDefaults = {
             config: {
@@ -2201,7 +2277,7 @@ var CombatTracker = CombatTracker || (function() {
             },
         };
 
-        if(!state[statusState].hasOwnProperty('config')){
+        if(!state[statusState].config || typeof state[statusState].config == 'undefined'){
             state[statusState].config = statusDefaults.config;
         }else{
             if(!state[statusState].config.hasOwnProperty('command')){
@@ -2227,9 +2303,9 @@ var CombatTracker = CombatTracker || (function() {
             }            
         }
 
-        if(!state[statusState].hasOwnProperty('conditions')){
-            state[statusState].conditions = statusDefaults.conditions;
-        }
+        // if(!state[statusState].hasOwnProperty('conditions')){
+        //     state[statusState].conditions = statusDefaults.conditions;
+        // }
 
 //        sendConfigMenu();
     };

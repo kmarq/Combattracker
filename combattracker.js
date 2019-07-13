@@ -54,6 +54,7 @@ var CombatTracker = CombatTracker || (function() {
         allConditionsImage = 'G',
         addImage = '&',		
         doneImage = '3',
+        showImage = 'v',
         delayImage = '}';
 
     //Styling for the chat responses.
@@ -1527,6 +1528,7 @@ var CombatTracker = CombatTracker || (function() {
             allConditionsButton = makeImageButton('!ct all b',allConditionsImage,'Show All Conditions','transparent',18),
             favoritesButton     = makeImageButton('!ct fav b',favoriteImage,'Show Favorites','transparent',18),
             configButton        = makeImageButton('!ct tracker b',backImage,'Show Setup','transparent',18),
+            showButton          = makeImageButton('!ct show b',showImage,'Show Conditions','transparent',18),
             listItems           = [],
             titleText           = 'CombatTracker Menu<span style="' + styles.version + '"> (' + version + ')</span>',
             contents, key, condition, conditionButton, addButton, removeButton,favoriteButton,listContents;
@@ -1534,7 +1536,7 @@ var CombatTracker = CombatTracker || (function() {
         state[combatState].config.returnToTracker = true
         
         if (inFight() ) {
-            contents = '<div style="background-color:green;width:100%;padding:2px;vertical-align:middle">'+stopButton + prevButton + nextButton + pauseTimerButton + stopTimerButton 
+            contents = '<div style="background-color:green;width:100%;padding:2px;vertical-align:middle">'+stopButton + prevButton + nextButton + pauseTimerButton + stopTimerButton + showButton
             if (state[statusState].config.showConditions == 'Favorites'){
                 contents += allConditionsButton
             } else {
@@ -1584,12 +1586,14 @@ var CombatTracker = CombatTracker || (function() {
     showConditions = (tokens, toPlayers) => {
         let tokenObj
         
-        tokens.forEach(token => {
-            if (token._type == 'graphic') {
-                tokenObj = getObj('graphic', token._id);
-                announcePlayer(tokenObj, 'gm', false, false, true);
-            }
-        })    
+        if (tokens) {
+            tokens.forEach(token => {
+                if (token._type == 'graphic') {
+                    tokenObj = getObj('graphic', token._id);
+                    announcePlayer(tokenObj, 'gm', false, false, true);
+                }
+            })    
+        }    
     },
     
     makeAndSendMenu = (contents, title, whisper) => {

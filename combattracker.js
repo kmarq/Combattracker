@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.12 Beta
+ * Version 1.0.13 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.12 Beta',
+	    version = '1.0.13 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -179,17 +179,10 @@ var CombatTracker = CombatTracker || (function() {
 					removeCommand(msg, args)
 				}
 				break;
-    //             case 'show': {
-    //                 // if(!msg.selected || !msg.selected.length){
-    //                 //     makeAndSendMenu('No tokens are selected.', '', 'gm');
-    //                 //     return;
-    //                 // }
-    
-    //                 // let tokens = msg.selected.map(s => getObj('graphic', s._id));
-    
-    //                 sendTokenConditionMenu(msg.selected, (args.shift() === 'p'));
-    // 			}
-                // break;				
+                case 'show': {
+                    showConditions(msg.selected, (args.shift() === 'p'));
+    			}
+                break;				
 				default:
 				    log('default')
 					sendTrackerMenu();
@@ -858,22 +851,32 @@ var CombatTracker = CombatTracker || (function() {
         paused = !paused;
     },
 
-    announcePlayer = (token, target, prev, delay=false) => {
+    announcePlayer = (token, target, prev, delay=false, show) => {
         let name, imgurl, conditions, image, doneButton, delayButton, contents;
-        //set up components
+
         target      = (state[combatState].config.announcements.whisper_turn_gm) ? 'gm' : target;
         name        = token.get('name');
         imgurl      = token.get('imgsrc');
-        conditions  = getAnnounceConditions(token, prev, delay);
+        conditions  = getAnnounceConditions(token, prev, delay, show);
         image       = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : ''
-        name        = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name,
-        doneButton  = makeImageButton('!ct next',doneImage,'Done with Round','transparent',18)
-        delayButton = makeImageButton('!ct delay',delayImage,'Delay your Turn','transparent',18);
-        //build announcement
+        name        = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name
+        
+        if (!show) {
+            doneButton  = makeImageButton('!ct next',doneImage,'Done with Round','transparent',18)
+            delayButton = makeImageButton('!ct delay',delayImage,'Delay your Turn','transparent',18);
+        }    
+
         contents    = '<div style="display:inline-block;vertical-aligh:middle">'+image+'</div>'
-        contents   += '<div style="display:inline-block;vertical-aligh:middle">'+name+'\'s Turn</div>'
-        contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+doneButton+'</div>'
-        contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+delayButton+'</div>'
+        if (!show) {
+            contents   += '<div style="display:inline-block;vertical-aligh:middle">'+name+'\'s Turn</div>'
+        } else {
+            contents   += '<div style="display:inline-block;vertical-aligh:middle">'+name+'</div>'
+        }
+        
+        if (!show) {
+            contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+doneButton+'</div>'
+            contents   += '<div style="display:inline-block;float:right;vertical-aligh:middle">'+delayButton+'</div>'
+        }
         
         if (state[combatState].config.announcements.announce_turn) {
             contents   += conditions
@@ -882,26 +885,28 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents, '', target);
     },
 
-    getAnnounceConditions = (token, prev, delay) => {
-        let output = ' '
+    getAnnounceConditions = (token, prev, delay, show) => {
+        let output = ' ', removeButton
+        
         if (debug) {
             log('Announce Condition') 
             log('Token ID:' + token.get("_id"))
         }
 
+        removeButton  = makeImageButton('!ct remove',deleteImage,'Remove Condition','transparent',18)
+        
         state[combatState].conditions.forEach(condition => {
             
             if (condition.id ==  token.get("_id")) {
-                output  =  '<div>'
+                output  +=  '<div>'
+                
                 if (debug) {
                     log('Condition:' +condition.name)
                     log('Duration:' +condition.duration)
                     log('Direction:' +condition.direction)
                 }            
                 
-                log('Delay:' + delay)
-                if (!delay) {
-                    log('modifying conditions')
+                if (!delay && !show) {
                     if (!prev) {
                         condition.duration = condition.duration + condition.direction
                     } else {
@@ -911,18 +916,31 @@ var CombatTracker = CombatTracker || (function() {
                 
                 if (condition.duration == 0 && condition.direction != 0) {
                     output += '<strong>'+condition.name+'</strong> removed.';
-                    removeCondition(token, condition.name);  
+                    if (!delay && !show) {
+                        removeCondition(token, condition.name);  
+                    }    
                 } else if (condition.duration > 0 && condition.direction != 0) {
-                    output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Rounds Left';
-                    
-                    if (condition.duration >= 10) {                
-                        token.set('status_'+condition.icon, true);
+                    if (show) {
+                        output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Rounds Left'
                     } else {
-                        token.set('status_'+condition.icon, condition.duration);
+                        output += '<strong>'+condition.name+'</strong>: '+condition.duration+' Rounds Left';
+                    }
+                    
+                    if (!delay && !show) {
+                        if (condition.duration >= 10) {                
+                            token.set('status_'+condition.icon, true);
+                        } else {
+                            token.set('status_'+condition.icon, condition.duration);
+                        }   
                     }    
                 } else if (condition.direction == 0) {
-                    output += '<strong>'+condition.name+'</strong>: ' + condition.duration + ' Permanent (until removed)';
+                    if (show) {
+                        output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Permanent (until removed)'
+                    } else {
+                        output += '<strong>'+condition.name+'</strong>: '+condition.duration+'Permanent (until removed)';
+                    } 
                 }
+
                 output += '</div>'
             }    
         })
@@ -1485,8 +1503,6 @@ var CombatTracker = CombatTracker || (function() {
         })
         markerDropdown += '}';
 
-        log('Override:'+!condition.override)
-        log('Favorite:'+!condition.favorite)
 		let	listItems = [
 				makeTextButton('Name', condition.name, '!condition config-conditions '+key+' name|?{Name}'),
 				makeTextButton('Marker', getIcon(condition.icon) || condition.icon, '!condition config-conditions '+key+' icon|'+markerDropdown),				
@@ -1565,71 +1581,16 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents+makeList(listItems),titleText,'gm');
     },
     
-    // sendTokenConditionMenu = (tokens, toPlayers) => {
-    //     let name, imgurl, conditions, image, doneButton, delayButton, contents;
-       
-    //     //set up components
-    //     target       = (state[combatState].config.announcements.whisper_turn_gm) ? 'gm' : target;
-    //     name         = token.get('name');
-    //     imgurl       = token.get('imgsrc');
-    //     conditions   = getAnnounceConditions(token, prev, delay);
-    //     image        = (imgurl) ? '<img src="'+imgurl+'" width="50px" height="50px"  />' : ''
-    //     name         = (state[combatState].config.announcements.handleLongName) ? handleLongString(name) : name,
-    //     deleteButton = makeImageButton('!ct remove',deleteImage,'Remove Condition','transparent',18)
-
-    //     // let conditions, contents = '<div>';
-
-    //     if (debug) {
-    //         log('Send Token Condition')
-    //     }
-
-    //     tokens.forEach(token => {
-            
-    //         if (token._type == 'graphic') {
-    //             conditions = _.filter(state[combatState].conditions, function(condition) {
-    //                             return condition.id = token._id
-    //                         })
-    //         }
-            
-    //         contents += '<span style="font-size: 12pt; font-weight: bold;"> '
-    //         contents += '<img src='+token.get('imgsrc')+' style="width: 32px; height: 32px; vertical-align: middle;"></span>'
-    //         contents += '<span style="vertical-align: middle;">'+token.get('name')+'</span>'
-         
-    //         if (!conditions) {
-                
-    //         }
-
-    //     })            
-
-
-
-
-    //     //     if(!conditions || !conditions.length){
-    //     //         contents += '<tr><td colspan="2" style="text-align: center;"><i>None</i></td></tr>';
-    //     //     }else{
-    //     //         conditions.forEach(condition => {
-    //     //             let si_condition = false;
-    //     //             if(extensions.StatusInfo){
-    //     //                 si_condition = StatusInfo.getConditionByName(condition.name) || false;
-    //     //             }
-
-    //     //             let removeButton = makeButton('<img src="https://s3.amazonaws.com/files.d20.io/images/11381509/YcG-o2Q1-CrwKD_nXh5yAA/thumb.png?1439051579" />', '!'+state[state_name].config.command + ' remove ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;');
-    //     //             let showButton = (condition.message || si_condition) ? makeButton('<img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699008-icon-22-eye-128.png" />', '!'+state[state_name].config.command + ' showcondition ' + condition.name + ' ' + token.get('id'), styles.button + styles.float.right + 'width: 16px; height: 16px;') : '';
-    //     //             let name = condition.name;
-    //     //             name += (condition.duration) ? ' (' + condition.duration + ')' : '';
-    //     //             contents += ' \
-    //     //             <tr> \
-    //     //                 <td style="text-align: center">'+name+'</td> \
-    //     //                 <td>'+removeButton+showButton+'</td> \
-    //     //             </tr>';
-    //     //         });
-    //     //     }
-    //     // });
-
-    //     // contents += '</table>';
-
-    //     // makeAndSendMenu(contents, '', (toPlayers) ? '' : 'gm');
-    // },
+    showConditions = (tokens, toPlayers) => {
+        let tokenObj
+        
+        tokens.forEach(token => {
+            if (token._type == 'graphic') {
+                tokenObj = getObj('graphic', token._id);
+                announcePlayer(tokenObj, 'gm', false, false, true);
+            }
+        })    
+    },
     
     makeAndSendMenu = (contents, title, whisper) => {
         whisper = (whisper && whisper !== '') ? '/w ' + whisper + ' ' : '';

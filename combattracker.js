@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.13 Beta
+ * Version 1.0.14 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.13 Beta',
+	    version = '1.0.14 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -216,15 +216,19 @@ var CombatTracker = CombatTracker || (function() {
                         log('Condition Key:'+condition)
                     }
                     
-                    if(condition === 'add'){
-						createCondition(condition)
-                    } else if (condition === 'remove'){
-						deleteCondition(condition)
-                    } else if (state[statusState].conditions[condition]) {
-						editCondition(args, condition)
+                    if (condition) {
+                        if(condition === 'add'){
+    						createCondition(condition)
+                        } else if (condition === 'remove'){
+    						deleteCondition(condition)
+                        } else if (state[statusState].conditions[condition]) {
+    						editCondition(args, condition)
+                        } else {
+    						sendConditionsMenu();
+    					}	
                     } else {
-						sendConditionsMenu();
-					}	
+                        sendConditionsMenu();
+                    }	
                 break;
                 case 'favorite':
                     editFavoriteConditon(args)
@@ -238,27 +242,28 @@ var CombatTracker = CombatTracker || (function() {
     importConditions = (args, msg) => {
         let json;
         let conditions = msg.content.substring(('!condition import ').length);
+        log(msg.content)
+        log(conditions)
+        // try{
+        //     json = JSON.parse(conditions);
+        // } catch(e) {
+        //     makeAndSendMenu('This is not a valid JSON string.');
+        //     return;
+        // }
         
-        try{
-            json = JSON.parse(conditions);
-        } catch(e) {
-            makeAndSendMenu('This is not a valid JSON string.');
-            return;
-        }
+        // state[statusState] = json;
         
-        state[statusState] = json;
-        
-        state[statusState].conditions.forEach(condition => {
-            if(!condition.hasOwnProperty('duration')) {
-                condition.duration = 1
-            }
-            if(!condition.hasOwnProperty('direction')) {
-                condition.direction = -1
-            }            
-            if(!condition.hasOwnProperty('override')) {
-                condition.override = false
-            }            
-        }) 
+        // state[statusState].conditions.forEach(condition => {
+        //     if(!condition.hasOwnProperty('duration')) {
+        //         condition.duration = 1
+        //     }
+        //     if(!condition.hasOwnProperty('direction')) {
+        //         condition.direction = -1
+        //     }            
+        //     if(!condition.hasOwnProperty('override')) {
+        //         condition.override = false
+        //     }            
+        // }) 
     },
     
     exportConditions = () => {
@@ -491,7 +496,7 @@ var CombatTracker = CombatTracker || (function() {
         }
 
         selectedTokens.forEach(token => {
-
+            log(token)
             if (token._type == 'graphic') {
                 tokenObj        = getObj('graphic', token._id)
                 whisper         = (tokenObj.get('layer') === 'gmlayer') ? 'gm ' : ''
@@ -500,7 +505,6 @@ var CombatTracker = CombatTracker || (function() {
 
                 if (typeof character == 'undefined') {
                     makeAndSendMenu('A token was found not assigned to a character sheet',' ', whisper);   
-    //                verified=false
                 }
     
                 for (i=0;i<initAttributes.length;i++) {
@@ -896,58 +900,60 @@ var CombatTracker = CombatTracker || (function() {
 
         removeButton  = makeImageButton('!ct remove',deleteImage,'Remove Condition','transparent',18)
         
-        state[combatState].conditions.forEach(condition => {
-            
-            if (condition.id ==  token.get("_id")) {
-                output  +=  '<div>'
+        if (state[combatState].conditions) {
+            state[combatState].conditions.forEach(condition => {
                 
-                if (debug) {
-                    log('Condition:' +condition.name)
-                    log('Duration:' +condition.duration)
-                    log('Direction:' +condition.direction)
-                }            
-                
-                if (!delay && !show) {
-                    if (!prev) {
-                        condition.duration = condition.duration + condition.direction
-                    } else {
-                        condition.duration = condition.duration - condition.direction
-                    }
-                }    
-                
-                if (condition.duration == 0 && condition.direction != 0) {
-                    output += '<strong>'+condition.name+'</strong> removed.';
-                    if (!delay && !show) {
-                        removeCondition(token, condition.name);  
-                    }    
-                } else if (condition.duration > 0 && condition.direction != 0) {
-                    if (show) {
-                        output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Rounds Left'
-                    } else {
-                        output += '<strong>'+condition.name+'</strong>: '+condition.duration+' Rounds Left';
-                    }
+                if (condition.id ==  token.get("_id")) {
+                    output  +=  '<div>'
+                    
+                    if (debug) {
+                        log('Condition:' +condition.name)
+                        log('Duration:' +condition.duration)
+                        log('Direction:' +condition.direction)
+                    }            
                     
                     if (!delay && !show) {
-                        if (condition.duration >= 10) {                
-                            token.set('status_'+condition.icon, true);
+                        if (!prev) {
+                            condition.duration = condition.duration + condition.direction
                         } else {
-                            token.set('status_'+condition.icon, condition.duration);
-                        }   
+                            condition.duration = condition.duration - condition.direction
+                        }
                     }    
-                } else if (condition.direction == 0) {
-                    if (show) {
-                        output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Permanent (until removed)'
-                    } else {
-                        output += '<strong>'+condition.name+'</strong>: '+condition.duration+'Permanent (until removed)';
-                    } 
-                }
-
-                output += '</div>'
-            }    
-        })
+                    
+                    if (condition.duration == 0 && condition.direction != 0) {
+                        output += '<strong>'+condition.name+'</strong> removed.';
+                        if (!delay && !show) {
+                            removeCondition(token, condition.name);  
+                        }    
+                    } else if (condition.duration > 0 && condition.direction != 0) {
+                        if (show) {
+                            output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Rounds Left'
+                        } else {
+                            output += '<strong>'+condition.name+'</strong>: '+condition.duration+' Rounds Left';
+                        }
+                        
+                        if (!delay && !show) {
+                            if (condition.duration >= 10) {                
+                                token.set('status_'+condition.icon, true);
+                            } else {
+                                token.set('status_'+condition.icon, condition.duration);
+                            }   
+                        }    
+                    } else if (condition.direction == 0) {
+                        if (show) {
+                            output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Permanent (until removed)'
+                        } else {
+                            output += '<strong>'+condition.name+'</strong>: '+condition.duration+'Permanent (until removed)';
+                        } 
+                    }
+    
+                    output += '</div>'
+                }    
+            })
+        }    
 
       return output;
-  },
+    },
 
     handleLongString = (str, max=8) => {
         str = str.split(' ')[0];
@@ -956,35 +962,41 @@ var CombatTracker = CombatTracker || (function() {
 
     delayTurn = () => {
         let turnorder, currentTurn, nextTurn, dummy
-        //get turnorder and remove top two turns
+
         turnorder   = getTurnorder(),
         currentTurn = turnorder.shift();
         nextTurn    = turnorder.shift();
+        
         if (debug) {
             log('Delay Turn')
             log('Current:' + currentTurn)
             log('Next:'+nextTurn)
         }
+        
+        if (nextTurn.id === getOrCreateMarker().get('id')) { 
+            NextRound()
+            return;
+        }
+        
         turnorder.unshift(currentTurn)
         turnorder.unshift(nextTurn)
 
-//        turnorder.unshift(nextTurn)
-        //set the turnorder and move the marker
         setTurnorder(turnorder);
         doTurnorderChange(false,true);
     },
     
     NextTurn = () => {
+        let turnorder, currentTurn
+      
         if (debug) {
             log('Next Turn')
         }
-        let turnorder, currentTurn
-        //get turnorder and remove top turn
+        
         turnorder = getTurnorder(),
         currentTurn = turnorder.shift();
-        //add current turn to bottom
+
         turnorder.push(currentTurn);
-        //set the turnorder and move the marker
+
         setTurnorder(turnorder);
         doTurnorderChange();
     },
@@ -1970,7 +1982,7 @@ var CombatTracker = CombatTracker || (function() {
             conditions: []
         };
 
-        if(!state[combatState].config || typeof state[combatState].config == 'undefined') {
+        if(!state[combatState].config || typeof state[combatState].config == 'undefined' || reset) {
             state[combatState].config = combatDefaults.config;
         }else{
             if(!state[combatState].config.hasOwnProperty('command')){
@@ -2089,9 +2101,9 @@ var CombatTracker = CombatTracker || (function() {
             }
         }
 
-        // if(!state[combatState].hasOwnProperty('conditions')){
-        //     state[combatState].conditions = combatDefaults.conditions;
-        // }
+        if(!state[combatState].hasOwnProperty('conditions')){
+            state[combatState].conditions = combatDefaults.conditions;
+        }
 
         const statusDefaults = {
             config: {
@@ -2242,7 +2254,7 @@ var CombatTracker = CombatTracker || (function() {
             },
         };
 
-        if(!state[statusState].config || typeof state[statusState].config == 'undefined'){
+        if(!state[statusState].config || typeof state[statusState].config == 'undefined' || reset){
             state[statusState].config = statusDefaults.config;
         }else{
             if(!state[statusState].config.hasOwnProperty('command')){
@@ -2268,9 +2280,9 @@ var CombatTracker = CombatTracker || (function() {
             }            
         }
 
-        // if(!state[statusState].hasOwnProperty('conditions')){
-        //     state[statusState].conditions = statusDefaults.conditions;
-        // }
+        if(!state[statusState].hasOwnProperty('conditions')){
+            state[statusState].conditions = statusDefaults.conditions;
+        }
 
 //        sendConfigMenu();
     };

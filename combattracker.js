@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.16 Beta
+ * Version 1.0.17 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.16 Beta',
+	    version = '1.0.17 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -626,8 +626,8 @@ var CombatTracker = CombatTracker || (function() {
                             }
                         } else if (state[combatState].config.turnorder.show_initiative_roll) { 
                             // if not rolling advantage, use first roll
-                            initiativeRoll = initiativeRoll1
-                            sendInitiativeChat(tokenObj.get('name'),initiativeRoll1,initiativeMod,null,whisper)                              
+                            initiativeRoll = initiativeAdv1
+                            sendInitiativeChat(tokenObj.get('name'),initiativeRoll,initiativeMod,null,whisper)                              
                         }    
                     }  else if (state[combatState].config.turnorder.show_initiative_roll) { 
                         // if everything else then pass in for display
@@ -1754,20 +1754,11 @@ var CombatTracker = CombatTracker || (function() {
  
         if(!inFight()) return;
 
-        if(getCurrentTurn().id === obj.get('id')){
-            changeMarker(obj);
-        }
-
-        // if (state[combatState].config.next_marker) {
-        //     if (getNextTurn()) {
-        //         if (getNextTurn().id === obj.get('id') {
-        //             changeMarker(obj, true);
-        //         }    
-        //     }
-        // }
-        // if(getNextTurn().id === obj.get('id')){
-        //     changeMarker(obj, true);
-        // }
+        if (getCurrentTurn().id && obj.get('id')) {
+            if(getCurrentTurn().id === obj.get('id')){
+                changeMarker(obj);
+            }
+        }    
     },
 
     handleShapedSheet = (characterid, condition, add) => {

@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.15 Beta
+ * Version 1.0.16 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.15 Beta',
+	    version = '1.0.16 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -324,29 +324,32 @@ var CombatTracker = CombatTracker || (function() {
 	        
 	    //verify incomming command     
         if (verifyCondition(token.get("_id"), name)) {
-            //remove existing condition on token
+            
             removeCondition(token, name);   
-            //setup the new condition from input and get the defaults
+           
             defaultCondition    = getConditionByKey(name)
-            //default values.  If override is false then also use default values
             newCondition.id     = token.get("_id")
             newCondition.name   = defaultCondition.name.toLowerCase()
             newCondition.icon   = defaultCondition.icon
             
-            if (defaultCondition.override && duration) {
+            if (!defaultCondition.override) {
+                newCondition.duration = parseInt(defaultCondition.duration)
+            } else {
                 newCondition.duration = parseInt(duration)
             }
-            if (defaultCondition.override && direction) {
-                newCondition.direction = parseInt(direction)
-            }
-            //name is used within combat state to compare against in coming requests.  Needs to be lower case
+            if (!defaultCondition.override) {
+                newCondition.direction = parseInt(defaultCondition.direction)
+            } else {
+                newCondition.duration = parseInt(direction)
+            }   
+            
             if (debug) {
-                log('Duration:' + newCondition.duration)
-                log('Direction:' + newCondition.direction)
+                log('Duration:' + defaultCondition.duration)
+                log('Direction:' + defaultCondition.direction)
             }    
-            //push condition to combattracker
+           
             state[combatState].conditions.push(newCondition)
-            //set icon on token
+
             if (newCondition.name == 'dead' || newCondition.duration <= 1) {
                 token.set('status_'+newCondition.icon, true);
             } else {   

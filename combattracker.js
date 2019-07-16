@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.14 Beta
+ * Version 1.0.15 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.14 Beta',
+	    version = '1.0.15 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -244,26 +244,14 @@ var CombatTracker = CombatTracker || (function() {
         let conditions = msg.content.substring(('!condition import ').length);
         log(msg.content)
         log(conditions)
-        // try{
-        //     json = JSON.parse(conditions);
-        // } catch(e) {
-        //     makeAndSendMenu('This is not a valid JSON string.');
-        //     return;
-        // }
+        try{
+            json = JSON.parse(conditions);
+        } catch(e) {
+            makeAndSendMenu('This is not a valid JSON string.');
+            return;
+        }
         
-        // state[statusState] = json;
-        
-        // state[statusState].conditions.forEach(condition => {
-        //     if(!condition.hasOwnProperty('duration')) {
-        //         condition.duration = 1
-        //     }
-        //     if(!condition.hasOwnProperty('direction')) {
-        //         condition.direction = -1
-        //     }            
-        //     if(!condition.hasOwnProperty('override')) {
-        //         condition.override = false
-        //     }            
-        // }) 
+        state[statusState] = json;
     },
     
     exportConditions = () => {

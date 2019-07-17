@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.18 Beta
+ * Version 1.0.19 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.18 Beta',
+	    version = '1.0.19 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -113,21 +113,17 @@ var CombatTracker = CombatTracker || (function() {
             log('In Combat Tracker')
 			if (extracommand === 'next') {
 				if (!getTurnorder().length) return;
-
-				if(!playerIsGM(msg.playerid)){
-				    log('Next')
-					NextTurn();
-					return;
-				}
+				
+			    log('Next')
+				NextTurn();
+				return;
 			}
 			if (extracommand === 'delay') {
 				if (!getTurnorder().length) return;
 
-				if(!playerIsGM(msg.playerid)){
-				     log('Delay')
-					delayTurn();
-					return;
-				}
+			    log('Delay')
+				delayTurn();
+				return
 			}
 			
 			// Below commands are only for GM's

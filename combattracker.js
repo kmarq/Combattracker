@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.19 Beta
+ * Version 1.0.20 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.19 Beta',
+	    version = '1.0.20 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -41,7 +41,7 @@ var CombatTracker = CombatTracker || (function() {
         randomLoopImage = '?',
         togetherImage = 'J',
         loopImage = 'r',
-        singleImage = '1',
+        sortImage = '1',
         lockImage = ')',
         unlockImage = '(',
         backImage = 'y',
@@ -333,17 +333,25 @@ var CombatTracker = CombatTracker || (function() {
             if (!defaultCondition.override) {
                 newCondition.duration = parseInt(defaultCondition.duration)
             } else {
-                newCondition.duration = parseInt(duration)
+                if (!duration) {
+                    newCondition.duration = parseInt(defaultCondition.duration)
+                } else {
+                    newCondition.duration = parseInt(duration)
+                }    
             }
             if (!defaultCondition.override) {
                 newCondition.direction = parseInt(defaultCondition.direction)
             } else {
-                newCondition.duration = parseInt(direction)
+                if (!direction) {
+                    newCondition.direction = parseInt(defaultCondition.direction)
+                } else {    
+                    newCondition.direction = parseInt(direction)
+                }    
             }   
             
             if (debug) {
-                log('Duration:' + defaultCondition.duration)
-                log('Direction:' + defaultCondition.direction)
+                log('Duration:' + newCondition.duration)
+                log('Direction:' + newCondition.direction)
             }    
            
             state[combatState].conditions.push(newCondition)
@@ -386,6 +394,7 @@ var CombatTracker = CombatTracker || (function() {
                 }
             })
         }  
+        
         if (debug) {
             log('Combat Conditions')
             state[combatState].conditions.forEach(condition => {
@@ -395,7 +404,15 @@ var CombatTracker = CombatTracker || (function() {
     },
     
     verifyCondition  = (tokenID, name)  => {
-        //must have a name
+        let condition
+
+        condition    = getConditionByKey(name)
+        
+        if (condition.direction == null || condition.duration == null) {
+			makeAndSendMenu('The condition you are trying to use has not be setup yet', '', 'gm');
+			return false;            
+        }
+        
 		if (!name) {
 			makeAndSendMenu('No condition name was given.', '', 'gm');
 			return false;
@@ -424,6 +441,7 @@ var CombatTracker = CombatTracker || (function() {
         
         if (debug) {
             log('Start Combat')
+            log('Selected Tokens' + selectedTokens)
         }
         
         verified = verifySetup(selectedTokens)
@@ -471,7 +489,7 @@ var CombatTracker = CombatTracker || (function() {
             turnorder: ''
         });
         state[combatState].turnorder = {};
-        round = 1;
+        round = 0;
    
     },
     
@@ -952,8 +970,22 @@ var CombatTracker = CombatTracker || (function() {
     delayTurn = () => {
         let turnorder, currentTurn, nextTurn, dummy
 
-        turnorder   = getTurnorder(),
+        turnorder   = getTurnorder()
         currentTurn = turnorder.shift();
+        
+        if (getVeryNextTurn().id === getOrCreateMarker().get('id')) { 
+            setTurnorder(turnorder)
+            NextRound()
+            turnorder   = getTurnorder()
+            nextTurn = currentTurn
+            currentTurn = turnorder.shift();
+            turnorder.unshift(nextTurn)  
+            turnorder.unshift(currentTurn)
+            setTurnorder(turnorder);
+            
+            return;
+        }
+        
         nextTurn    = turnorder.shift();
         
         if (debug) {
@@ -962,14 +994,9 @@ var CombatTracker = CombatTracker || (function() {
             log('Next:'+nextTurn)
         }
         
-        if (nextTurn.id === getOrCreateMarker().get('id')) { 
-            NextRound()
-            return;
-        }
-        
         turnorder.unshift(currentTurn)
         turnorder.unshift(nextTurn)
-
+        
         setTurnorder(turnorder);
         doTurnorderChange(false,true);
     },
@@ -1016,7 +1043,9 @@ var CombatTracker = CombatTracker || (function() {
             sortTurnorder();
         }else{
             NextTurn();
-            sortTurnorder();
+            if(state[combatState].config.turnorder.auto_sort){
+                sortTurnorder();
+            }
         }
     },
 
@@ -1124,6 +1153,14 @@ var CombatTracker = CombatTracker || (function() {
         });
         return returnturn;
     },
+    
+    getVeryNextTurn = () => {
+        let turnorder, turn;
+        turnorder = getTurnorder();
+        turn = turnorder.shift()
+        turn = turnorder.shift()
+        return turn;
+    },    
 
     addToTurnorder = (turn) => {
         let turnorder = getTurnorder(),
@@ -1530,6 +1567,7 @@ var CombatTracker = CombatTracker || (function() {
             favoritesButton     = makeImageButton('!ct fav b',favoriteImage,'Show Favorites','transparent',18),
             configButton        = makeImageButton('!ct tracker b',backImage,'Show Setup','transparent',18),
             showButton          = makeImageButton('!ct show b',showImage,'Show Conditions','transparent',18),
+            sortButton          = makeImageButton('!ct sort b',sortImage,'Sort Turnorder','transparent',18),
             listItems           = [],
             titleText           = 'CombatTracker Menu<span style="' + styles.version + '"> (' + version + ')</span>',
             contents, key, condition, conditionButton, addButton, removeButton,favoriteButton,listContents;
@@ -1537,7 +1575,7 @@ var CombatTracker = CombatTracker || (function() {
         state[combatState].config.returnToTracker = true
         
         if (inFight() ) {
-            contents = '<div style="background-color:green;width:100%;padding:2px;vertical-align:middle">'+stopButton + prevButton + nextButton + pauseTimerButton + stopTimerButton + showButton
+            contents = '<div style="background-color:green;width:100%;padding:2px;vertical-align:middle">'+stopButton + prevButton + nextButton + pauseTimerButton + stopTimerButton + showButton + sortButton
             if (state[statusState].config.showConditions == 'Favorites'){
                 contents += allConditionsButton
             } else {
@@ -1783,34 +1821,34 @@ var CombatTracker = CombatTracker || (function() {
         prev.statusmarkers = (typeof prev.get === 'function') ? prev.get('statusmarkers') : prev.statusmarkers;
 
         if(state[statusState].config.showDescOnStatusChange && typeof prev.statusmarkers === 'string'){
-            // Check if the statusmarkers string is different from the previous statusmarkers string.
             if(obj.get('statusmarkers') !== prev.statusmarkers){
-                // Create arrays from the statusmarkers strings.
+
                 var prevstatusmarkers = prev.statusmarkers.split(",");
                 var statusmarkers = obj.get('statusmarkers').split(",");
+                
                 if (debug) {
                     log('New Statuses:'+statusmarkers)
                     log('Old Statuses:'+prevstatusmarkers)
                 }
-                // Loop through the statusmarkers array.
-                statusmarkers.forEach(function(marker){
-                    let condition = getConditionByMarker(marker);
-                    if(!condition) return;
-                    // If it is a new statusmarkers, add condition to combat state 
-                    if(marker !== "" && !prevstatusmarkers.includes(marker)){
-                        addCondition(obj, condition.name.toLowerCase());
-                    }
-                });
-                //loop through previous statusmarkers array
+
                 prevstatusmarkers.forEach((marker) => {
                     let condition = getConditionByMarker(marker);
                     if(!condition) return;
                     
-                    // if it is a remove statusmarker, remove it from combat state
                     if(marker !== '' && !statusmarkers.includes(marker)){
                         removeCondition(obj, condition.name.toLowerCase());
                     }
                 })
+                
+                statusmarkers.forEach(function(marker){
+                    let condition = getConditionByMarker(marker);
+                    if(!condition) return;
+
+                    if(marker !== "" && !prevstatusmarkers.includes(marker)){
+                        addCondition(obj, condition.name.toLowerCase(),condition.duration,condition.direction);
+                    }
+                });
+
             }
         }
     },

@@ -1784,16 +1784,19 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     handleGraphicMovement = (obj /*, prev */) => {
-         if (debug) {
+        let turnID, objID
+        if (debug) {
             log ('Handle Graphic Movement')
         } 
  
         if(!inFight()) return;
 
-        if (getCurrentTurn().id && obj.get('id')) {
-            if(getCurrentTurn().id === obj.get('id')){
-                changeMarker(obj);
-            }
+        if (obj.hasOwnProperty("id")) {
+            if (getCurrentTurn().id && obj.get('id')) {
+                if(getCurrentTurn().id === obj.get('id')){
+                    changeMarker(obj);
+                }
+            }   
         }    
     },
 

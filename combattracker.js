@@ -2,7 +2,7 @@
  * Version 1.0.22 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
- * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
+ * Changes in Version 0.3.0 and greater by Victor B
  * Skype: RobinKuiper.eu
  * Discord: Atheos#1095
  * My Discord Server: https://discord.gg/AcC9VMEG

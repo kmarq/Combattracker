@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.21 Beta
+ * Version 1.0.22 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.2.8, 0.2.81, 0.2.82 by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.21 Beta',
+	    version = '1.0.22 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -110,18 +110,15 @@ var CombatTracker = CombatTracker || (function() {
         }
         
         if (command === state[combatState].config.command) {
-            log('In Combat Tracker')
 			if (extracommand === 'next') {
 				if (!getTurnorder().length) return;
 				
-			    log('Next')
 				NextTurn();
 				return;
 			}
 			if (extracommand === 'delay') {
 				if (!getTurnorder().length) return;
 
-			    log('Delay')
 				delayTurn();
 				return
 			}
@@ -183,7 +180,6 @@ var CombatTracker = CombatTracker || (function() {
     			}
                 break;				
 				default:
-				    log('default')
 					sendTrackerMenu();
 				break;
 			}
@@ -240,8 +236,7 @@ var CombatTracker = CombatTracker || (function() {
     importConditions = (args, msg) => {
         let json;
         let conditions = msg.content.substring(('!condition import ').length);
-        log(msg.content)
-        log(conditions)
+
         try{
             json = JSON.parse(conditions);
         } catch(e) {
@@ -471,15 +466,15 @@ var CombatTracker = CombatTracker || (function() {
         
         if(timerObj) timerObj.remove();
 
-        state[combatState].conditions.forEach((condition,i) => {
-            log(condition)
-            log(getOrCreateMarker().get('id'))
-            if (condition.id != getOrCreateMarker().get('id')) {
-                token           = getObj('graphic', condition.id)
-                token.set('status_'+condition.icon, false); 
-                
-            }  
-        }) 
+        if (state[statusState].config.clearConditions) {
+            state[combatState].conditions.forEach((condition,i) => {
+                if (condition.id != getOrCreateMarker().get('id')) {
+                    token           = getObj('graphic', condition.id)
+                    token.set('status_'+condition.icon, false); 
+                    
+                }  
+            }) 
+        }    
         state[combatState].conditions = [];
         removeMarkers();
         stopTimer();
@@ -503,7 +498,6 @@ var CombatTracker = CombatTracker || (function() {
         }
 
         selectedTokens.forEach(token => {
-            log(token)
             if (token._type == 'graphic') {
                 tokenObj        = getObj('graphic', token._id)
                 whisper         = (tokenObj.get('layer') === 'gmlayer') ? 'gm ' : ''
@@ -1470,6 +1464,7 @@ var CombatTracker = CombatTracker || (function() {
 				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
 				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config showIconInDescription|'+!state[statusState].config.showIconInDescription),
 				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config showConditions|?{Show|All|Favorites}'),	
+				makeTextButton('Clear Conditions on Close', state[statusState].config.clearConditions, '!condition config clearConditions|'+!state[statusState].config.clearConditions),
 			],			
 			contents = makeList(listItems, backButton);	
 
@@ -2134,7 +2129,8 @@ var CombatTracker = CombatTracker || (function() {
                 sendOnlyToGM: false,
                 showDescOnStatusChange: true,
                 showIconInDescription: true,
-                showConditions: 'All'
+                showConditions: 'All',
+                clearConditions: false
             },
             conditions: {
                 blinded: {
@@ -2298,7 +2294,10 @@ var CombatTracker = CombatTracker || (function() {
             }
             if(!state[statusState].config.hasOwnProperty('showConditions')){
                 state[statusState].config.showConditions = statusDefaults.config.showConditions;
-            }            
+            }           
+            if(!state[statusState].config.hasOwnProperty('clearConditions')){
+                state[statusState].config.clearConditions = statusDefaults.config.clearConditions;
+            }                
         }
 
         if(!state[statusState].hasOwnProperty('conditions')){

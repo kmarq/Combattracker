@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.24 Beta
+ * Version 1.1.0 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.24 Beta',
+	    version = '1.1.0 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -716,6 +716,7 @@ var CombatTracker = CombatTracker || (function() {
             log('Turn Order Change')
             log('ID:' + turn.id)
         }
+        
         if (turn.id === '-1') { 
             if (turn.formula) {
                 updatePR(turn, parseInt(turn.formula));
@@ -768,14 +769,17 @@ var CombatTracker = CombatTracker || (function() {
 
         if (state[combatState].config.next_marker) {
             let nextTurn = getNextTurn();
-            let nextToken = getObj('graphic', nextTurn.id);
+            if (nextTurn != null && typeof nextTurn == 'object') {
+           
+                let nextToken = getObj('graphic', nextTurn.id);
 
-            if (nextToken) {
-                toFront(nextToken);
-                changeMarker(nextToken || false, true);
-            } else {
-                resetMarker(true);
-            }
+                if (nextToken) {
+                    toFront(nextToken);
+                    changeMarker(nextToken || false, true);
+                } else {
+                    resetMarker(true);
+                }
+            }    
         }
     },
 
@@ -1779,20 +1783,28 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     handleGraphicMovement = (obj /*, prev */) => {
-        let turnID, objID
+        let turn, nextTurn
         if (debug) {
             log ('Handle Graphic Movement')
         } 
- 
+        
+        turn = getCurrentTurn()
+        nextTurn = getNextTurn()
+        
         if(!inFight()) return;
-
-        if (obj.hasOwnProperty("id")) {
-            if (getCurrentTurn().id && obj.get('id')) {
-                if(getCurrentTurn().id === obj.get('id')){
+        
+        if (obj != null && typeof obj.get == 'function') {
+            if (turn != null && typeof turn == 'object') {
+                if(turn.id === obj.get('id')){
                     changeMarker(obj);
                 }
-            }   
-        }    
+            }    
+            if (nextTurn != null && typeof nextTurn == 'object') {
+                if(nextTurn.id === obj.get('id')){
+                    changeMarker(obj, true);
+                }  
+            }    
+        }   
     },
 
     handleShapedSheet = (characterid, condition, add) => {
@@ -2119,8 +2131,8 @@ var CombatTracker = CombatTracker || (function() {
         
         if(!state[combatState].hasOwnProperty('conditions')){
             state[combatState].conditions = combatDefaults.conditions;
-        } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
-            state[combatState].conditions = combatDefaults.conditions;
+         } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
+             state[combatState].conditions = combatDefaults.conditions;
         }
 
         const statusDefaults = {

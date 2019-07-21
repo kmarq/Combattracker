@@ -1,5 +1,5 @@
 /* 
- * Version 1.0.22 Beta
+ * Version 1.0.23 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.0.22 Beta',
+	    version = '1.0.23 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -2116,9 +2116,11 @@ var CombatTracker = CombatTracker || (function() {
                 }
             }
         }
-
+        
         if(!state[combatState].hasOwnProperty('conditions')){
             state[combatState].conditions = combatDefaults.conditions;
+        // } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
+        //     state[combatState].conditions = combatDefaults.conditions;
         }
 
         const statusDefaults = {

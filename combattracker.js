@@ -2119,8 +2119,8 @@ var CombatTracker = CombatTracker || (function() {
         
         if(!state[combatState].hasOwnProperty('conditions')){
             state[combatState].conditions = combatDefaults.conditions;
-        // } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
-        //     state[combatState].conditions = combatDefaults.conditions;
+        } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
+            state[combatState].conditions = combatDefaults.conditions;
         }
 
         const statusDefaults = {

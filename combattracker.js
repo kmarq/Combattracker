@@ -217,7 +217,7 @@ var CombatTracker = CombatTracker || (function() {
             if (action=='config') {
                 switch(condition) {
                     case 'import':
-                        importConditions(args, msg)
+                        importConditions(msg)
                     break;
                     case 'export':
                         exportConditions()
@@ -257,7 +257,7 @@ var CombatTracker = CombatTracker || (function() {
         }		
     },
 
-    importConditions = (args, msg) => {
+    importConditions = (msg) => {
         let json;
         let conditions = msg.content.substring(('!condition config import ').length);
 

@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.0 Beta
+ * Version 1.1.1 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.0 Beta',
+	    version = '1.1.1 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -98,35 +98,63 @@ var CombatTracker = CombatTracker || (function() {
         if (msg.content.indexOf('!ct')!==0 && msg.content.indexOf('!condition')!==0) {
             return;
         }
-		
-        let args = msg.content.split(' ');
-        let command = args.shift().substring(1);
-        let extracommand = args.shift();
         
         if (debug) {
-            log(args)
-            log(command)
-            log(extracommand)
-        }
+            log('handleInput')
+            log('Msg:'+msg.content)
+        }	
+        
+        let args        = msg.content.split(' '),
+            command     = args.shift().substring(1),
+            action      = args.shift(),
+            condition   = args.shift(),
+            changes     = args.shift(),
+            key, value, duration, direction
+            
+        if (typeof changes != 'undefined') {    
+            if (changes.includes('|')) {   
+                changes     = changes.split('|')
+             	key         = changes.shift()
+    		    value       = (changes[0] === 'true') ? true : (changes[0] === 'false') ? false : changes[0]
+    		    if (key == 'description') {
+    		        value   = value + ' ' + args.join(' ')
+    		    }                
+            } else {
+                duration    = changes
+                direction   = args.shift()
+            }
+        }    
+        
+        if (debug) {
+            log('handleInput')
+            log('Command:'+command)
+            log('Action:'+action)
+            log('Condition:'+condition)
+            log('Changes:'+changes)
+            log('Key:'+key)
+            log('Value:'+value)
+            log('Duration:'+duration)
+            log('Direction:' + direction)
+        }    
         
         if (command === state[combatState].config.command) {
-			if (extracommand === 'next') {
+			if (action === 'next') {
 				if (!getTurnorder().length) return;
 				
 				NextTurn();
 				return;
 			}
-			if (extracommand === 'delay') {
+			if (action === 'delay') {
 				if (!getTurnorder().length) return;
 
 				delayTurn();
 				return
 			}
 			
-			// Below commands are only for GM's
+// 			// Below commands are only for GM's
 			if (!playerIsGM(msg.playerid)) return;
 
-			switch (extracommand) {
+            switch (action) {
 				case 'reset':
 						state[combatState] = {};
 						state[statusState] = {};
@@ -134,7 +162,7 @@ var CombatTracker = CombatTracker || (function() {
 						sendConfigMenu();
 				break;
 				case 'config':
-					editCombatState(args)              
+					editCombatState(condition,key,value)              
 				break;
 				case 'tracker':
 					sendConfigMenu();
@@ -146,33 +174,33 @@ var CombatTracker = CombatTracker || (function() {
 					PrevTurn();
 				break;
 				case 'start':
-					startCombat(msg.selected, args);
+					startCombat(msg.selected);
 				break;
 				case 'stop':
 					stopCombat();
-					if(args.shift() === 'b') sendTrackerMenu();
+					sendTrackerMenu();
 				break;
 				case 'st':
 					stopTimer();
-					if(args.shift() === 'b') sendTrackerMenu();
+					sendTrackerMenu();
 				break;
 				case 'pt':
 					pauseTimer();
-					if(args.shift() === 'b') sendTrackerMenu();
+					sendTrackerMenu();
 				break;
 				case 'all':
 					editFavoriteState('All');
-					if(args.shift() === 'b') sendTrackerMenu();
+					sendTrackerMenu();
 				break;	
 				case 'fav':
 					editFavoriteState('Favorites');
-					if(args.shift() === 'b') sendTrackerMenu();
+					sendTrackerMenu();
 				break;						
 				case 'add':
-				    addCommand(msg, args)
+				    addCommand(msg.selected, condition, duration, direction)
 				break;    
 				case 'remove': {
-					removeCommand(msg, args)
+					removeCommand(msg.selected, condition)
 				}
 				break;
                 case 'show': {
@@ -186,56 +214,52 @@ var CombatTracker = CombatTracker || (function() {
 		}	
 		
         if (command === state[statusState].config.command) {
-            switch(extracommand) {
-                
-                case 'import':
-                    importConditions(args, msg)
-                break;
-                case 'export':
-                    exportConditions()
-
-                break;                
-                case 'config':
-                    if(args.length > 0){
-                          editStatusState(args)
-                    } else {
-                        sendStatusMenu()
-                    }
-                break;
-                case 'config-conditions':
-                    let condition = args.shift();
-
-                    if (debug) {
-                        log('Conditions Config')
-                        log('Condition Key:'+condition)
-                    }
-                    
-                    if (condition) {
-                        if(condition === 'add'){
-    						createCondition(condition)
-                        } else if (condition === 'remove'){
-    						deleteCondition(condition)
-                        } else if (state[statusState].conditions[condition]) {
-    						editCondition(args, condition)
-                        } else {
-    						sendConditionsMenu();
-    					}	
-                    } else {
-                        sendConditionsMenu();
-                    }	
-                break;
-                case 'favorite':
-                    editFavoriteConditon(args)
-                break;
-                default:
-                break;
+            if (action=='config') {
+                switch(condition) {
+                    case 'import':
+                        importConditions(args, msg)
+                    break;
+                    case 'export':
+                        exportConditions()
+                    break;                
+                    case 'status':
+                            sendStatusMenu(key, value)
+                    break;
+                    case 'list':
+                            sendConditionsMenu()
+                    break;      
+                    case 'update':
+                        editStatusState(key, value)
+                    break;  
+                    case 'edit':
+                        sendConditionMenu(key)
+                    break;    
+                    case 'condition':
+                        editCondition(condition, key, value)
+                    break;      
+                }    
+            } else {
+                switch(action) {
+                    case 'update':
+                        editCondition(condition, key, value)
+                    break;
+                    case 'add':
+                        createCondition(condition)
+                    break;                
+                    case 'remove':
+                        deleteCondition(condition, key)
+                    break;
+                     case 'favorite':
+                        editFavoriteConditon(condition, key, value)
+                    break;               
+                }  
             }
         }		
     },
 
     importConditions = (args, msg) => {
         let json;
-        let conditions = msg.content.substring(('!condition import ').length);
+        let conditions = msg.content.substring(('!condition config import ').length);
 
         try{
             json = JSON.parse(conditions);
@@ -252,29 +276,24 @@ var CombatTracker = CombatTracker || (function() {
     },
     
     //this
-    addCommand = (msg, args) => {
-        let	name        = args.shift().toLowerCase(),
-            duration    = args.shift() || 0,
-            direction   = args.shift() || 0,
-            message     = args.join(' ')
+    addCommand = (tokens, condition, duration, direction) => {
 
         if (debug) {
             log('Add Command')
-            log('Name:' + name)
+            log('Condition:' + condition)
             log('Duration:' + duration)
             log('Direction:' + direction)
-            log('Message:'+ message)            
         }
         //loop through selected tokens
-        if (msg.selected) {
-        	msg.selected.forEach(select => {
+        if (tokens) {
+        	tokens.forEach(token => {
                 if (debug) {
-                    log('ID:' + select._id)
-                    log('Type:' + select._type)
+                    log('ID:' + token._id)
+                    log('Type:' + token._type)
                 } 
         	    //call add condition passint ing token, name and other parameters
-        	    if (select._type == 'graphic') {
-    			    addCondition(getObj(select._type, select._id), name, duration, direction, message)    
+        	    if (token._type == 'graphic') {
+    			    addCondition(getObj(token._type, token._id), condition, duration, direction)    
         	    }
         	        
         	});	 	
@@ -283,36 +302,37 @@ var CombatTracker = CombatTracker || (function() {
         }   
     },
   
-     removeCommand = (msg, args) => {
-        let	name        = args.shift().toLowerCase()
+     removeCommand = (tokens, condition) => {
 
         if (debug) {
             log('Remove Command')
-            log('Name:' + name)
+            log('Condition:' + condition)
         }
         
         //loop through selected tokens
-        if (msg.selected) {
-        	msg.selected.forEach(select => {
+        if (tokens) {
+        	tokens.forEach(token => {
                 if (debug) {
-                    log('ID:' + select._id)
-                    log('Type:' + select._type)
+                    log('ID:' + token._id)
+                    log('Type:' + token._type)
                 } 
         	    //call add condition passint ing token, name and other parameters
-        	    if (select._type == 'graphic') {
-    			    removeCondition(getObj(select._type, select._id), name)    
+        	    if (token._type == 'graphic') {
+    			    removeCondition(getObj(token._type, token._id), condition)    
         	    }    
         	});	 	
         }	
     },
        
-    addCondition = (token, name, duration, direction, message) => {
+    addCondition = (token, name, duration, direction) => {
 	    let	defaultCondition, combatCondition, newCondition = {}
 
         if (debug) {
             log('Add Condition')
             log('Token:' + token.get("_id"))
             log('Name:'+name)
+            log('Duration:'+duration)
+            log('Direction:'+direction)
         } 
 	        
 	    //verify incomming command     
@@ -403,7 +423,7 @@ var CombatTracker = CombatTracker || (function() {
 
         condition    = getConditionByKey(name)
         
-        if (condition.direction == null || condition.duration == null) {
+        if (typeof condition.direction == 'undefined' || typeof condition.duration == 'undefined') {
 			makeAndSendMenu('The condition you are trying to use has not be setup yet', '', 'gm');
 			return false;            
         }
@@ -431,7 +451,7 @@ var CombatTracker = CombatTracker || (function() {
         return str.replace(/[^a-zA-Z0-9]+/g, '_');
     },
 
-    startCombat = (selectedTokens, args) => {
+    startCombat = (selectedTokens) => {
         let verified=false, statusmarkers
         
         if (debug) {
@@ -716,7 +736,6 @@ var CombatTracker = CombatTracker || (function() {
             log('Turn Order Change')
             log('ID:' + turn.id)
         }
-        
         if (turn.id === '-1') { 
             if (turn.formula) {
                 updatePR(turn, parseInt(turn.formula));
@@ -769,17 +788,14 @@ var CombatTracker = CombatTracker || (function() {
 
         if (state[combatState].config.next_marker) {
             let nextTurn = getNextTurn();
-            if (nextTurn != null && typeof nextTurn == 'object') {
-           
-                let nextToken = getObj('graphic', nextTurn.id);
+            let nextToken = getObj('graphic', nextTurn.id);
 
-                if (nextToken) {
-                    toFront(nextToken);
-                    changeMarker(nextToken || false, true);
-                } else {
-                    resetMarker(true);
-                }
-            }    
+            if (nextToken) {
+                toFront(nextToken);
+                changeMarker(nextToken || false, true);
+            } else {
+                resetMarker(true);
+            }
         }
     },
 
@@ -1168,17 +1184,8 @@ var CombatTracker = CombatTracker || (function() {
             log('Add to Turnorder')
         }
         
-        // turnorder.forEach(t => {
-        //     if (debug){
-        //         log('Turn:' + t)
-        //     }            
-        //     if(t.id === turn.id) justDoIt = false;
-        // });
-
-        // if(justDoIt){
-            turnorder.push(turn);
-            setTurnorder(turnorder);
-        // }
+        turnorder.push(turn);
+        setTurnorder(turnorder);
     },
 
     setTurnorder = (turnorder) => {
@@ -1189,45 +1196,41 @@ var CombatTracker = CombatTracker || (function() {
         return Math.floor(Math.random()*(max-min+1)+min);
     },
 	
-	editCombatState = (args) => {
-		if(args[1]){
-			let setting = args[1].split('|');
-			let key = setting.shift();
-			let value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];		
+	editCombatState = (type,key,value) => {
 			
-			if(args[0] === 'combat'){
-				state[combatState].config[key] = value;
+		if(type === 'combat'){
+			state[combatState].config[key] = value;
+		}
+		
+		if(type === 'timer'){
+			state[combatState].config.timer[key] = value;
+		}
+		
+		if (type === 'turnorder'){
+			if(key === 'ini_die') {
+				value = parseInt(value);
 			}
-			
-			if(args[0] === 'timer'){
-				state[combatState].config.timer[key] = value;
-			}
-			
-			if (args[0] === 'turnorder'){
-				if(key === 'ini_die') {
-					value = parseInt(value);
-				}
-				state[combatState].config.turnorder[key] = value;
-			}	
-			
-			if (args[0] === 'announcements'){
-				state[combatState].config.announcements[key] = value;
-			}
-			
-			if (args[0] === 'macro'){
-				state[combatState].config.macro[key] = value;
-			}
+			state[combatState].config.turnorder[key] = value;
 		}	
+		
+		if (type === 'announcements'){
+			state[combatState].config.announcements[key] = value;
+		}
+		
+		if (type === 'macro'){
+			state[combatState].config.macro[key] = value;
+		}
 
-		if(args[0] === 'combat'){
+
+		if(type === 'combat'){
 			sendCombatMenu();
-		} else if(args[0] === 'timer'){
+		} else if(type === 'timer'){
 			sendTimerMenu();
-		} else if (args[0] === 'turnorder'){
+		} else if (type === 'turnorder'){
 			sendTurnorderMenu();
-		} else if (args[0] === 'announcements'){
+		} else if (type === 'announcements'){
 			sendAnnounceMenu();
-		} else if (args[0] === 'macro'){
+		} else if (type === 'macro'){
 			sendMacroMenu();
 		} else {
 			sendConfigMenu();
@@ -1238,12 +1241,7 @@ var CombatTracker = CombatTracker || (function() {
 		state[statusState].config.showConditions = value;
 	},
 	
-	editFavoriteConditon = (args) => {
-	    
-        let condition = args.shift(),
-            setting = args.shift().split('|'),
-            key = setting.shift(),
-            value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];                    
+	editFavoriteConditon = (condition, key, value) => {
  
         if (debug) {
             log ('Edit Favorite Condition')
@@ -1256,10 +1254,7 @@ var CombatTracker = CombatTracker || (function() {
         sendTrackerMenu()    
 	},
 	
-	editStatusState = (args) => {
-        let setting = args.shift().split('|'),
-            key = setting.shift(),
-            value = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
+	editStatusState = (key, value) => {
 
         if (debug) {
             log ('Edit Status State')
@@ -1274,32 +1269,39 @@ var CombatTracker = CombatTracker || (function() {
         sendStatusMenu();	    
 	},
 	
-	createCondition = (condition) => {
-		let name = condition.shift();
-
+	createCondition = (name) => {
+        if (debug) {
+            log ('Create Condition')
+            log('Name:'+name)
+        }	
+        
 		if(!name){
-			sendConditionsMenu('You didn\'t give a condition name, eg. <i>!'+state[statusState].config.command+' config-conditions add Prone</i>.');
+			sendConditionsMenu('You didn\'t give a condition name, eg. <i>!condition add Prone</i>.');
 		} else if (state[statusState].conditions[name.toLowerCase()]) {
 			sendConditionsMenu('The condition `'+name+'` already exists.');
 		} else {
 			state[statusState].conditions[name.toLowerCase()] = {
 				name: name,
 				icon: 'red',
-				description: '',
+				description: ' ',
 				duration: 1,
 				direction: 0
 			}	
-			sendConditionMenu(condition.toLowerCase());		
+			sendConditionMenu(name.toLowerCase());		
 		}		
 	},
 	
-	deleteCondition = (condition) => {			
-		let name = condition.shift(),
-            confirm = args.shift();
-			
+	deleteCondition = (name, confirm) => {	
+
+        if (debug) {
+            log ('Delete Condition')
+            log('Condition:'+name)
+            log('Confirm:'+confirm)
+        }	
+
 		if (confirm === 'yes') {
 			if(!name){
-				sendConditionsMenu('You didn\'t give a condition name, eg. <i>!condition config-conditions remove Prone</i>.');
+				sendConditionsMenu('You didn\'t give a condition name, eg. <i>!condition remove Prone</i>.');
 			} else if( !state[statusState].conditions[name.toLowerCase()]){
 				sendConditionsMenu('The condition `'+name+'` does\'t exist.');
 			} else {
@@ -1309,35 +1311,26 @@ var CombatTracker = CombatTracker || (function() {
 		}	
 	},
 	
-	editCondition = (args, conditionKey) => {
+	editCondition = (condition, key, value) => {
 	    if (debug) {
             log('Edit Condition')
+            log('Condition:'+condition)
+		    log('Key:' + key)
+		    log('Value:' + value)            
 	    }
-	    
-        if (args.length > 0) {
-    		let setting = args.shift().split('|'),
-    		    key     = setting.shift(),
-    		    value   = (setting[0] === 'true') ? true : (setting[0] === 'false') ? false : setting[0];
-		
-			if (debug) {
-			    log('Settings:' + setting)
-			    log('Key:' + key)
-			    log('Value:' + value)
-			}
-    
-    		if(key === 'name' && value !== state[statusState].conditions[conditionKey].name){ 
-   				state[statusState].conditions[value.toLowerCase()] = state[statusState].conditions[conditionKey];
-   				delete state[statusState].conditions[conditionKey];
- 				conditionKey = value.toLowerCase();
-    	    }
-    
-            if (key === 'description') {
-                value = value + ' ' + args.join(' ') 
-            }
-   			state[statusState].conditions[conditionKey][key] = value;
-        }
-		
-		sendConditionMenu(conditionKey);	
+
+		if (key === 'name' && value !== state[statusState].conditions[condition].name) { 
+  			state[statusState].conditions[value.toLowerCase()] = state[statusState].conditions[condition];
+  			delete state[statusState].conditions[condition];
+ 			condition = value.toLowerCase();
+	    }
+
+        // if (key === 'description') {
+        //     value = value + ' ' + args.join(' ') 
+        // }
+  		state[statusState].conditions[condition][key] = value;
+
+		sendConditionMenu(condition);	
 	},
 	
     getConditions = () => {
@@ -1351,10 +1344,10 @@ var CombatTracker = CombatTracker || (function() {
 			configTimerButton           = makeBigButton('Timer', '!ct config timer'),
 			configAnnouncementsButton   = makeBigButton('Announcement', '!ct config announcements'),
 			configMacroButton           = makeBigButton('Macro', '!ct config macro'),
-			configStatusButton          = makeBigButton('Status', '!condition config'),
-			configConditionButton       = makeBigButton('Conditions', '!condition config-conditions'),
-			exportButton                = makeBigButton('Export', '!condition export'),
-			importButton                = makeBigButton('Import', '!condition import ?{Config}'),	
+			configStatusButton          = makeBigButton('Status', '!condition config status'),
+			configConditionButton       = makeBigButton('Conditions', '!condition config list'),
+			exportButton                = makeBigButton('Export', '!condition config export'),
+			importButton                = makeBigButton('Import', '!condition config import ?{Config}'),	
 			resetButton                 = makeBigButton('Reset', '!ct reset'),
 			backToTrackerButton         = makeBigButton('Back To Tracker', '!ct'),
 			titleText                   = 'CombatTracker Setup<span style="' + styles.version + '"> (' + version + ')</span>',
@@ -1459,16 +1452,16 @@ var CombatTracker = CombatTracker || (function() {
     },
 	
 	//Start Status Menus
-	sendStatusMenu = (first) => {
+	sendStatusMenu = () => {
         let backButton = makeBigButton('Back', '!ct config'),
             listItems = [
-				makeTextButton('Only to GM', state[statusState].config.sendOnlyToGM, '!condition config sendOnlyToGM|'+!state[statusState].config.sendOnlyToGM),
-				makeTextButton('Player Show', state[statusState].config.userAllowed, '!condition config userAllowed|'+!state[statusState].config.userAllowed),
-				makeTextButton('Player Toggle', state[statusState].config.userToggle, '!condition config userToggle|'+!state[statusState].config.userToggle),
-				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
-				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config showIconInDescription|'+!state[statusState].config.showIconInDescription),
-				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config showConditions|?{Show|All|Favorites}'),	
-				makeTextButton('Clear Conditions on Close', state[statusState].config.clearConditions, '!condition config clearConditions|'+!state[statusState].config.clearConditions),
+				makeTextButton('Only to GM', state[statusState].config.sendOnlyToGM, '!condition config update sendOnlyToGM|'+!state[statusState].config.sendOnlyToGM),
+				makeTextButton('Player Show', state[statusState].config.userAllowed, '!condition config update userAllowed|'+!state[statusState].config.userAllowed),
+				makeTextButton('Player Toggle', state[statusState].config.userToggle, '!condition config update userToggle|'+!state[statusState].config.userToggle),
+				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config update showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
+				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config update showIconInDescription|'+!state[statusState].config.showIconInDescription),
+				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config update showConditions|?{Show|All|Favorites}'),	
+				makeTextButton('Clear Conditions on Close', state[statusState].config.clearConditions, '!condition config update clearConditions|'+!state[statusState].config.clearConditions),
 			],			
 			contents = makeList(listItems, backButton);	
 
@@ -1478,7 +1471,7 @@ var CombatTracker = CombatTracker || (function() {
     sendConditionsMenu = (message) => {
         let key, duration, direction, override,	condition, conditionButton, favorite, icon,	output,
             backButton = makeBigButton('Back', '!ct' + ' config'),
-			addButton = makeBigButton('Add Condition', '!condition config-conditions add ?{Name}'),
+			addButton = makeBigButton('Add Condition', '!condition add ?{Name}'),
 			listItems = [],
             icons = [],
             check = true,
@@ -1486,7 +1479,7 @@ var CombatTracker = CombatTracker || (function() {
 			
         for (key in state[statusState].conditions) {
             condition       = state[statusState].conditions[key]
-            conditionButton = makeButton(state[statusState].conditions[key].name, '!condition config-conditions ' + key)
+            conditionButton = makeButton(state[statusState].conditions[key].name, '!condition config edit ' + key)
 			icon            = getIcon(state[statusState].conditions[key].icon,'display:inline-block;',24,24)
 			
 			if (!condition.duration) {
@@ -1523,16 +1516,25 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents, 'Conditions');
     },
 
-    sendConditionMenu = (key, message) => {
-        let condition           = state[statusState].conditions[key],
-			removeButton        = makeBigButton('Delete Condition', '!condition config-conditions remove '+key+' ?{Are you sure?|Yes,yes|No,no}'),
-			descriptionButton   = makeBigButton('Edit Description', '!condition config-conditions '+key+' description|?{Description|'+condition.description+'}'),
+    sendConditionMenu = (key) => {
+        let condition           = state[statusState].conditions[key]
+        
+        if (debug) {
+            log('Send Condition Menu')
+        }
+        
+        if (typeof condition.description == 'undefine') {
+            condition.description = ' '
+        }
+        log(condition)
+		let	removeButton        = makeBigButton('Delete Condition', '!condition remove '+key+' ?{Are you sure?|Yes,yes|No,no}'),
+			descriptionButton   = makeBigButton('Edit Description', '!condition update '+key+' description|?{Description|'+condition.description+'}'),
 			backButton
 	    
 	    if (state[combatState].config.returnToTracker) {
 	        backButton          = makeBigButton('Back', '!ct', buttonStyle + ' width: 100%')
 	    } else {
-	        backButton          = makeBigButton('Back', '!condition config-conditions', buttonStyle + ' width: 100%')
+	        backButton          = makeBigButton('Back', '!condition config list', buttonStyle + ' width: 100%')
 	    }
 	    
 		let	markerDropdown = '?{Marker';		
@@ -1542,16 +1544,15 @@ var CombatTracker = CombatTracker || (function() {
         markerDropdown += '}';
 
 		let	listItems = [
-				makeTextButton('Name', condition.name, '!condition config-conditions '+key+' name|?{Name}'),
-				makeTextButton('Marker', getIcon(condition.icon) || condition.icon, '!condition config-conditions '+key+' icon|'+markerDropdown),				
-				makeTextButton('Duration', condition.duration, '!condition config-conditions '+key+' duration|?{Duration|1}'),
-				makeTextButton('Direction', condition.direction, '!condition config-conditions '+key+' direction|?{Direction|0}'),
-				makeTextButton('Override', condition.override, '!condition config-conditions '+key+' override|'+!condition.override),
-				makeTextButton('Favorites', condition.favorite, '!condition config-conditions '+key+' favorite|'+!condition.favorite)
+				makeTextButton('Name', condition.name, '!condition update '+key+' name|?{Name}'),
+				makeTextButton('Marker', getIcon(condition.icon) || condition.icon, '!condition update '+key+' icon|'+markerDropdown),				
+				makeTextButton('Duration', condition.duration, '!condition update '+key+' duration|?{Duration|1}'),
+				makeTextButton('Direction', condition.direction, '!condition update '+key+' direction|?{Direction|0}'),
+				makeTextButton('Override', condition.override, '!condition update '+key+' override|'+!condition.override),
+				makeTextButton('Favorites', condition.favorite, '!condition update '+key+' favorite|'+!condition.favorite)
 			];
 
-        message = (message) ? '<p style="color: red">'+message+'</p>' : '';
-		let contents = message+makeList(listItems)+'<hr>'+descriptionButton+'<b>Description:</b>'+condition.description+removeButton+'<hr>'+backButton 	
+		let contents = makeList(listItems)+'<hr>'+descriptionButton+'<b>Description:</b>'+condition.description+removeButton+'<hr>'+backButton 	
         makeAndSendMenu(contents, 'Condition Setup');
     },
 
@@ -1589,7 +1590,7 @@ var CombatTracker = CombatTracker || (function() {
         
         for(key in state[statusState].conditions){
             condition       = state[statusState].conditions[key]
-            conditionButton = makeImageButton('!condition config-conditions '  + key,backImage,'Edit Condition','transparent',12)
+            conditionButton = makeImageButton('!condition config edit '  + key,backImage,'Edit Condition','transparent',12)
             removeButton    = makeImageButton('!ct remove '  + key,deleteImage,'Remove Condition','transparent',12)
             
             if (condition.override) {
@@ -1599,9 +1600,9 @@ var CombatTracker = CombatTracker || (function() {
             }
             
             if (condition.favorite) {
-                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,favoriteImage,'Remove from Favorites','transparent',12)
+                favoriteButton = makeImageButton('!condition config favorite '+key+' favorite|'+!condition.favorite,favoriteImage,'Remove from Favorites','transparent',12)
             } else {
-                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,allConditionsImage,'Add to Favorites','transparent',12)
+                favoriteButton = makeImageButton('!condition config favorite '+key+' favorite|'+!condition.favorite,allConditionsImage,'Add to Favorites','transparent',12)
             }
 
             listContents = '<div>'
@@ -1783,28 +1784,20 @@ var CombatTracker = CombatTracker || (function() {
     },
 
     handleGraphicMovement = (obj /*, prev */) => {
-        let turn, nextTurn
+        let turnID, objID
         if (debug) {
             log ('Handle Graphic Movement')
         } 
-        
-        turn = getCurrentTurn()
-        nextTurn = getNextTurn()
-        
+ 
         if(!inFight()) return;
-        
-        if (obj != null && typeof obj.get == 'function') {
-            if (turn != null && typeof turn == 'object') {
-                if(turn.id === obj.get('id')){
+
+        if (obj.hasOwnProperty("id")) {
+            if (getCurrentTurn().id && obj.get('id')) {
+                if(getCurrentTurn().id === obj.get('id')){
                     changeMarker(obj);
                 }
-            }    
-            if (nextTurn != null && typeof nextTurn == 'object') {
-                if(nextTurn.id === obj.get('id')){
-                    changeMarker(obj, true);
-                }  
-            }    
-        }   
+            }   
+        }    
     },
 
     handleShapedSheet = (characterid, condition, add) => {
@@ -1951,12 +1944,6 @@ var CombatTracker = CombatTracker || (function() {
                 handleStatusMarkerChange(obj,prev);
             });
         }
-
-        // if('undefined' !== typeof CombatTracker && CombatTracker.ObserveTokenChange){
-        //     CombatTracker.ObserveTokenChange((obj,prev) => {
-        //         handleStatusMarkerChange(obj,prev);
-        //     });
-        // }		
     },
 	
     setDefaults = (reset) => {
@@ -2131,9 +2118,10 @@ var CombatTracker = CombatTracker || (function() {
         
         if(!state[combatState].hasOwnProperty('conditions')){
             state[combatState].conditions = combatDefaults.conditions;
-         } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
-             state[combatState].conditions = combatDefaults.conditions;
+        } else if (state[combatState].conditions != null && typeof state[combatState].conditions == 'object') {
+            state[combatState].conditions = combatDefaults.conditions;
         }
+
 
         const statusDefaults = {
             config: {
@@ -2317,8 +2305,6 @@ var CombatTracker = CombatTracker || (function() {
         if(!state[statusState].hasOwnProperty('conditions')){
             state[statusState].conditions = statusDefaults.conditions;
         }
-
-//        sendConfigMenu();
     };
 
     return {

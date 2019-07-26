@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.1 Beta
+ * Version 1.1.2 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.1 Beta',
+	    version = '1.1.2 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -120,7 +120,8 @@ var CombatTracker = CombatTracker || (function() {
     		        value   = value + ' ' + args.join(' ')
     		    }                
             } else {
-                duration    = changes
+                key         = changes
+                duration    = args.shift()
                 direction   = args.shift()
             }
         }    
@@ -214,52 +215,44 @@ var CombatTracker = CombatTracker || (function() {
 		}	
 		
         if (command === state[statusState].config.command) {
-            if (action=='config') {
-                switch(condition) {
-                    case 'import':
-                        importConditions(msg)
-                    break;
-                    case 'export':
-                        exportConditions()
-                    break;                
-                    case 'status':
-                            sendStatusMenu(key, value)
-                    break;
-                    case 'list':
-                            sendConditionsMenu()
-                    break;      
-                    case 'update':
-                        editStatusState(key, value)
-                    break;  
-                    case 'edit':
-                        sendConditionMenu(key)
-                    break;    
-                    case 'condition':
-                        editCondition(condition, key, value)
-                    break;      
-                }    
-            } else {
-                switch(action) {
-                    case 'update':
-                        editCondition(condition, key, value)
-                    break;
-                    case 'add':
-                        createCondition(condition)
-                    break;                
-                    case 'remove':
-                        deleteCondition(condition, key)
-                    break;
-                     case 'favorite':
-                        editFavoriteConditon(condition, key, value)
-                    break;               
-                }  
+            switch(action) {
+                case 'import':
+                    importConditions(msg)
+                break;
+                case 'export':
+                    exportConditions()
+                break;                
+                case 'status':
+                    sendStatusMenu(key, value)
+                break;
+                case 'list':
+                    sendConditionsMenu()
+                break;      
+                case 'config':
+                    editStatusState(key, value)
+                break;  
+                case 'condition':
+                    sendConditionMenu(condition)
+                break;    
+                case 'update':
+                    editCondition(condition, key, value)
+                break;
+                case 'add':
+                    createCondition(condition)
+                break;                
+                case 'remove':
+                    deleteCondition(condition, key)
+                break;
+                case 'favorite':
+                    editFavoriteConditon(condition, key, value)
+                break;   
             }
         }		
     },
 
     importConditions = (msg) => {
         let json;
-        let conditions = msg.content.substring(('!condition config import ').length);
+        let conditions = msg.content.substring(('!condition import ').length);
 
         try{
             json = JSON.parse(conditions);
@@ -964,7 +957,7 @@ var CombatTracker = CombatTracker || (function() {
                         if (show) {
                             output += '<strong>'+makeButton(condition.name, '!ct remove '+condition.name)+'</strong>:'+condition.duration+' Permanent (until removed)'
                         } else {
-                            output += '<strong>'+condition.name+'</strong>: '+condition.duration+'Permanent (until removed)';
+                            output += '<strong>'+condition.name+'</strong>: '+condition.duration+' Permanent';
                         } 
                     }
     
@@ -1344,10 +1337,10 @@ var CombatTracker = CombatTracker || (function() {
 			configTimerButton           = makeBigButton('Timer', '!ct config timer'),
 			configAnnouncementsButton   = makeBigButton('Announcement', '!ct config announcements'),
 			configMacroButton           = makeBigButton('Macro', '!ct config macro'),
-			configStatusButton          = makeBigButton('Status', '!condition config status'),
-			configConditionButton       = makeBigButton('Conditions', '!condition config list'),
-			exportButton                = makeBigButton('Export', '!condition config export'),
-			importButton                = makeBigButton('Import', '!condition config import ?{Config}'),	
+			configStatusButton          = makeBigButton('Status', '!condition status'),
+			configConditionButton       = makeBigButton('Conditions', '!condition list'),
+			exportButton                = makeBigButton('Export', '!condition export'),
+			importButton                = makeBigButton('Import', '!condition import ?{Config}'),	
 			resetButton                 = makeBigButton('Reset', '!ct reset'),
 			backToTrackerButton         = makeBigButton('Back To Tracker', '!ct'),
 			titleText                   = 'CombatTracker Setup<span style="' + styles.version + '"> (' + version + ')</span>',
@@ -1455,13 +1448,13 @@ var CombatTracker = CombatTracker || (function() {
 	sendStatusMenu = () => {
         let backButton = makeBigButton('Back', '!ct config'),
             listItems = [
-				makeTextButton('Only to GM', state[statusState].config.sendOnlyToGM, '!condition config update sendOnlyToGM|'+!state[statusState].config.sendOnlyToGM),
-				makeTextButton('Player Show', state[statusState].config.userAllowed, '!condition config update userAllowed|'+!state[statusState].config.userAllowed),
-				makeTextButton('Player Toggle', state[statusState].config.userToggle, '!condition config update userToggle|'+!state[statusState].config.userToggle),
-				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config update showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
-				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config update showIconInDescription|'+!state[statusState].config.showIconInDescription),
-				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config update showConditions|?{Show|All|Favorites}'),	
-				makeTextButton('Clear Conditions on Close', state[statusState].config.clearConditions, '!condition config update clearConditions|'+!state[statusState].config.clearConditions),
+				makeTextButton('Only to GM', state[statusState].config.sendOnlyToGM, '!condition config status sendOnlyToGM|'+!state[statusState].config.sendOnlyToGM),
+				makeTextButton('Player Show', state[statusState].config.userAllowed, '!condition config status userAllowed|'+!state[statusState].config.userAllowed),
+				makeTextButton('Player Toggle', state[statusState].config.userToggle, '!condition config status userToggle|'+!state[statusState].config.userToggle),
+				makeTextButton('Show Status Change', state[statusState].config.showDescOnStatusChange, '!condition config status showDescOnStatusChange|'+!state[statusState].config.showDescOnStatusChange),
+				makeTextButton('Display Icon in Chat', state[statusState].config.showIconInDescription, '!condition config status showIconInDescription|'+!state[statusState].config.showIconInDescription),
+				makeTextButton('Show Conditions', state[statusState].config.showConditions, '!condition config status showConditions|?{Show|All|Favorites}'),	
+				makeTextButton('Clear Conditions on Close', state[statusState].config.clearConditions, '!condition config status clearConditions|'+!state[statusState].config.clearConditions),
 			],			
 			contents = makeList(listItems, backButton);	
 
@@ -1479,7 +1472,7 @@ var CombatTracker = CombatTracker || (function() {
 			
         for (key in state[statusState].conditions) {
             condition       = state[statusState].conditions[key]
-            conditionButton = makeButton(state[statusState].conditions[key].name, '!condition config edit ' + key)
+            conditionButton = makeButton(state[statusState].conditions[key].name, '!condition condition ' + key)
 			icon            = getIcon(state[statusState].conditions[key].icon,'display:inline-block;',24,24)
 			
 			if (!condition.duration) {
@@ -1521,12 +1514,14 @@ var CombatTracker = CombatTracker || (function() {
         
         if (debug) {
             log('Send Condition Menu')
+            log('Key:'+key)
+            log('Condition:'+condition)
         }
         
-        if (typeof condition.description == 'undefine') {
+        if (typeof condition.description == 'undefined') {
             condition.description = ' '
         }
-        log(condition)
+        
 		let	removeButton        = makeBigButton('Delete Condition', '!condition remove '+key+' ?{Are you sure?|Yes,yes|No,no}'),
 			descriptionButton   = makeBigButton('Edit Description', '!condition update '+key+' description|?{Description|'+condition.description+'}'),
 			backButton
@@ -1590,7 +1585,7 @@ var CombatTracker = CombatTracker || (function() {
         
         for(key in state[statusState].conditions){
             condition       = state[statusState].conditions[key]
-            conditionButton = makeImageButton('!condition config edit '  + key,backImage,'Edit Condition','transparent',12)
+            conditionButton = makeImageButton('!condition condition '  + key,backImage,'Edit Condition','transparent',12)
             removeButton    = makeImageButton('!ct remove '  + key,deleteImage,'Remove Condition','transparent',12)
             
             if (condition.override) {
@@ -1600,9 +1595,9 @@ var CombatTracker = CombatTracker || (function() {
             }
             
             if (condition.favorite) {
-                favoriteButton = makeImageButton('!condition config favorite '+key+' favorite|'+!condition.favorite,favoriteImage,'Remove from Favorites','transparent',12)
+                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,favoriteImage,'Remove from Favorites','transparent',12)
             } else {
-                favoriteButton = makeImageButton('!condition config favorite '+key+' favorite|'+!condition.favorite,allConditionsImage,'Add to Favorites','transparent',12)
+                favoriteButton = makeImageButton('!condition favorite '+key+' favorite|'+!condition.favorite,allConditionsImage,'Add to Favorites','transparent',12)
             }
 
             listContents = '<div>'

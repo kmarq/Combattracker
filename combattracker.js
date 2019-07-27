@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.2 Beta
+ * Version 1.1.3 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.2 Beta',
+	    version = '1.1.3 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -120,7 +120,6 @@ var CombatTracker = CombatTracker || (function() {
     		        value   = value + ' ' + args.join(' ')
     		    }                
             } else {
-                key         = changes
                 duration    = args.shift()
                 direction   = args.shift()
             }

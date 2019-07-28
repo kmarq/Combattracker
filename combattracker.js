@@ -92,7 +92,6 @@ var CombatTracker = CombatTracker || (function() {
     script_name = 'CombatTracker',
     combatState = 'COMBATTRACKER',
     statusState = 'STATUSINFO',
-
     handleInput = (msg) => {
 
         if (msg.content.indexOf('!ct')!==0 && msg.content.indexOf('!condition')!==0) {
@@ -111,6 +110,13 @@ var CombatTracker = CombatTracker || (function() {
             changes     = args.shift(),
             key, value, duration, direction
             
+        if (debug) {
+            log('handleInput')
+            log('Command:'+command)
+            log('Action:'+action)
+            log('Condition:'+condition)
+        }   
+        
         if (typeof changes != 'undefined') {    
             if (changes.includes('|')) {   
                 changes     = changes.split('|')
@@ -118,25 +124,24 @@ var CombatTracker = CombatTracker || (function() {
     		    value       = (changes[0] === 'true') ? true : (changes[0] === 'false') ? false : changes[0]
     		    if (key == 'description') {
     		        value   = value + ' ' + args.join(' ')
-    		    }                
+    		    }      
+            
+                if (debug) {
+                    log('Changes:'+changes)
+                    log('Key:'+key)
+                    log('Value:'+value)
+                }       		    
             } else {
                 duration    = args.shift()
                 direction   = args.shift()
+            
+                if (debug) {
+                    log('Duration:'+duration)
+                    log('Direction:' + direction)
+                }                   
             }
         }    
-        
-        if (debug) {
-            log('handleInput')
-            log('Command:'+command)
-            log('Action:'+action)
-            log('Condition:'+condition)
-            log('Changes:'+changes)
-            log('Key:'+key)
-            log('Value:'+value)
-            log('Duration:'+duration)
-            log('Direction:' + direction)
-        }    
-        
+
         if (command === state[combatState].config.command) {
 			if (action === 'next') {
 				if (!getTurnorder().length) return;

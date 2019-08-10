@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.5 Beta
+ * Version 1.1.6 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.5 Beta',
+	    version = '1.1.6 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -471,8 +471,10 @@ var CombatTracker = CombatTracker || (function() {
             rollInitiative(selectedTokens);
         }
 
-        sendTrackerMenu();
-        doTurnorderChange();
+        setTimeout(function(){
+            doTurnorderChange();
+            sendTrackerMenu();
+        },1)    
     },
     
     stopCombat = () => {
@@ -664,8 +666,12 @@ var CombatTracker = CombatTracker || (function() {
                     if (debug) {
                         log("Token Id:" + tokenObj.id)
                         log("Token Page:" + tokenObj.get("pageid"))
+                    }  
+                    if (Number.isInteger(initiativeMod+initiativeRoll)) {
+                        addToTurnorder({id:tokenObj.id,pr:(initiativeMod+initiativeRoll),custom:'',pageid:tokenObj.get("pageid")});
+                    } else {
+                        addToTurnorder({id:tokenObj.id,pr:(initiativeMod+initiativeRoll).toFixed(2),custom:'',pageid:tokenObj.get("pageid")});
                     }    
-                    addToTurnorder({id:tokenObj.id,pr:initiativeMod+initiativeRoll,custom:'',pageid:tokenObj.get("pageid")});
                 }   
             }    
         });

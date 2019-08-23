@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.6 Beta
+ * Version 1.1.7 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.6 Beta',
+	    version = '1.1.7 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -748,9 +748,9 @@ var CombatTracker = CombatTracker || (function() {
             } else {
                 NextTurn();
             }    
-            return;
+           return;
         }
-        
+
         if (turn.id === getOrCreateMarker().get('id')) {
             if (prev) {
                 PrevRound();
@@ -1047,6 +1047,10 @@ var CombatTracker = CombatTracker || (function() {
         let marker = getOrCreateMarker();
         round++;
         marker.set({ name: 'Round ' + round});
+        
+        if (debug) {
+            log('Next Round')
+        }
 
         if(state[combatState].config.announcements.announce_round){
             let text = '<span style="font-size: 12pt; font-weight: bold;">'+marker.get('name')+'</span>';
@@ -1056,8 +1060,10 @@ var CombatTracker = CombatTracker || (function() {
         if(state[combatState].config.turnorder.reroll_ini_round){
             let turnorder = getTurnorder();
             clearTurnorder();
-            rollInitiative(turnorder.map(t => { return (t.id !== -1 && t.id !== marker.get('id')) ? { _type: 'graphic', _id: t.id } : false }), state[combatState].config.turnorder.auto_sort);
-            sortTurnorder();
+            checkMarkerturn(marker)
+ //           log(turnorder.map(turnorder.map(t => { return (t.id !== -1 && t.id !== marker.get('id')) ? { _type: 'graphic', _id: t.id } : false })))
+            rollInitiative(turnorder.map(t => { return (t.id) ? { _type: 'graphic', _id: t.id } : false }));
+//           sortTurnorder();
         }else{
             NextTurn();
             if(state[combatState].config.turnorder.auto_sort){
@@ -2049,7 +2055,7 @@ var CombatTracker = CombatTracker || (function() {
                 if(!state[combatState].config.turnorder.hasOwnProperty('auto_sort')){
                     state[combatState].config.turnorder.auto_sort = combatDefaults.config.turnorder.auto_sort;
                 }
-                if(!state[combatState].config.hasOwnProperty('reroll_ini_round')){
+                if(!state[combatState].config.turnorder.hasOwnProperty('reroll_ini_round')){
                     state[combatState].config.turnorder.reroll_ini_round = combatDefaults.config.turnorder.reroll_ini_round;
                 }
             }

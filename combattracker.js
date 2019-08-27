@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.7 Beta
+ * Version 1.1.8 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.7 Beta',
+	    version = '1.1.8 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -1064,6 +1064,7 @@ var CombatTracker = CombatTracker || (function() {
  //           log(turnorder.map(turnorder.map(t => { return (t.id !== -1 && t.id !== marker.get('id')) ? { _type: 'graphic', _id: t.id } : false })))
             rollInitiative(turnorder.map(t => { return (t.id) ? { _type: 'graphic', _id: t.id } : false }));
 //           sortTurnorder();
+            doTurnorderChange()
         }else{
             NextTurn();
             if(state[combatState].config.turnorder.auto_sort){
@@ -2148,7 +2149,7 @@ var CombatTracker = CombatTracker || (function() {
             conditions: {
                 blinded: {
                     name: 'Blinded',
-                    description: '<p>A blinded creature can’t see and automatically fails any ability check that requires sight.</p> <p>Attack rolls against the creature have advantage, and the creature’s Attack rolls have disadvantage.</p>',
+                    description: '<p>A blinded creature canâ€™t see and automatically fails any ability check that requires sight.</p> <p>Attack rolls against the creature have advantage, and the creatureâ€™s Attack rolls have disadvantage.</p>',
                     icon: 'bleeding-eye',
                     duration: 1,
 					direction: -1,
@@ -2157,7 +2158,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 charmed: {
                     name: 'Charmed',
-                    description: '<p>A charmed creature can’t Attack the charmer or target the charmer with harmful Abilities or magical effects.</p> <p>The charmer has advantage on any ability check to interact socially with the creature.</p>',
+                    description: '<p>A charmed creature canâ€™t Attack the charmer or target the charmer with harmful Abilities or magical effects.</p> <p>The charmer has advantage on any ability check to interact socially with the creature.</p>',
                     icon: 'broken-heart',
                     duration: 1,
 					direction: -1,
@@ -2166,7 +2167,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 deafened: {
                     name: 'Deafened',
-                    description: '<p>A deafened creature can’t hear and automatically fails any ability check that requires hearing.</p>',
+                    description: '<p>A deafened creature canâ€™t hear and automatically fails any ability check that requires hearing.</p>',
                     icon: 'edge-crack',
                     duration: 1,
 					direction: -1,
@@ -2175,7 +2176,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 frightened: {
                     name: 'Frightened',
-                    description: '<p>A frightened creature has disadvantage on Ability Checks and Attack rolls while the source of its fear is within line of sight.</p> <p>The creature can’t willingly move closer to the source of its fear.</p>',
+                    description: '<p>A frightened creature has disadvantage on Ability Checks and Attack rolls while the source of its fear is within line of sight.</p> <p>The creature canâ€™t willingly move closer to the source of its fear.</p>',
                     icon: 'screaming',
                     duration: 1,
 					direction: -1,
@@ -2184,7 +2185,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 grappled: {
                     name: 'Grappled',
-                    description: '<p>A grappled creature’s speed becomes 0, and it can’t benefit from any bonus to its speed.</p> <p>The condition ends if the Grappler is <i>incapacitated</i>.</p> <p>The condition also ends if an effect removes the grappled creature from the reach of the Grappler or Grappling effect, such as when a creature is hurled away by the Thunderwave spell.</p>',
+                    description: '<p>A grappled creatureâ€™s speed becomes 0, and it canâ€™t benefit from any bonus to its speed.</p> <p>The condition ends if the Grappler is <i>incapacitated</i>.</p> <p>The condition also ends if an effect removes the grappled creature from the reach of the Grappler or Grappling effect, such as when a creature is hurled away by the Thunderwave spell.</p>',
                     icon: 'grab',
                     duration: 1,
 					direction: -1,
@@ -2193,7 +2194,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 incapacitated: {
                     name: 'Incapacitated',
-                    description: '<p>An incapacitated creature can’t take actions or reactions.</p>',
+                    description: '<p>An incapacitated creature canâ€™t take actions or reactions.</p>',
                     icon: 'interdiction',
                     duration: 1,
 					direction: -1,
@@ -2211,7 +2212,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 invisibility: {
                     name: 'Invisibility',
-                    description: '<p>An invisible creature is impossible to see without the aid of magic or a Special sense. For the purpose of Hiding, the creature is heavily obscured. The creature’s location can be detected by any noise it makes or any tracks it leaves.</p> <p>Attack rolls against the creature have disadvantage, and the creature’s Attack rolls have advantage.</p>',
+                    description: '<p>An invisible creature is impossible to see without the aid of magic or a Special sense. For the purpose of Hiding, the creature is heavily obscured. The creatureâ€™s location can be detected by any noise it makes or any tracks it leaves.</p> <p>Attack rolls against the creature have disadvantage, and the creatureâ€™s Attack rolls have advantage.</p>',
                     icon: 'ninja-mask',
                     duration: 1,
 					direction: -1,
@@ -2220,7 +2221,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 paralyzed: {
                     name: 'Paralyzed',
-                    description: '<p>A paralyzed creature is <i>incapacitated</i> and can’t move or speak.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
+                    description: '<p>A paralyzed creature is <i>incapacitated</i> and canâ€™t move or speak.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
                     icon: 'pummeled',
                     duration: 1,
 					direction: -1,
@@ -2229,7 +2230,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 petrified: {
                     name: 'Petrified',
-                    description: '<p>A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance (usually stone). Its weight increases by a factor of ten, and it ceases aging.</p> <p>The creature is <i>incapacitated</i>, can’t move or speak, and is unaware of its surroundings.</p> <p>Attack rolls against the creature have advantage.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>The creature has Resistance to all damage.</p> <p>The creature is immune to poison and disease, although a poison or disease already in its system is suspended, not neutralized.</p>',
+                    description: '<p>A petrified creature is transformed, along with any nonmagical object it is wearing or carrying, into a solid inanimate substance (usually stone). Its weight increases by a factor of ten, and it ceases aging.</p> <p>The creature is <i>incapacitated</i>, canâ€™t move or speak, and is unaware of its surroundings.</p> <p>Attack rolls against the creature have advantage.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>The creature has Resistance to all damage.</p> <p>The creature is immune to poison and disease, although a poison or disease already in its system is suspended, not neutralized.</p>',
                     icon: 'frozen-orb',
                     duration: 1,
 					direction: -1,
@@ -2247,7 +2248,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 prone: {
                     name: 'Prone',
-                    description: '<p>A prone creature’s only Movement option is to crawl, unless it stands up and thereby ends the condition.</p> <p>The creature has disadvantage on Attack rolls.</p> <p>An Attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the Attack roll has disadvantage.</p>',
+                    description: '<p>A prone creatureâ€™s only Movement option is to crawl, unless it stands up and thereby ends the condition.</p> <p>The creature has disadvantage on Attack rolls.</p> <p>An Attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the Attack roll has disadvantage.</p>',
                     icon: 'back-pain',
                     duration: 1,
 					direction: -1,
@@ -2256,7 +2257,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 restrained: {
                     name: 'Restrained',
-                    description: '<p>A restrained creature’s speed becomes 0, and it can’t benefit from any bonus to its speed.</p> <p>Attack rolls against the creature have advantage, and the creature’s Attack rolls have disadvantage.</p> <p>The creature has disadvantage on Dexterity saving throws.</p>',
+                    description: '<p>A restrained creatureâ€™s speed becomes 0, and it canâ€™t benefit from any bonus to its speed.</p> <p>Attack rolls against the creature have advantage, and the creatureâ€™s Attack rolls have disadvantage.</p> <p>The creature has disadvantage on Dexterity saving throws.</p>',
                     icon: 'fishing-net',
                     duration: 1,
 					direction: -1,
@@ -2265,7 +2266,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 stunned: {
                     name: 'Stunned',
-                    description: '<p>A stunned creature is <i>incapacitated</i>, can’t move, and can speak only falteringly.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p>',
+                    description: '<p>A stunned creature is <i>incapacitated</i>, canâ€™t move, and can speak only falteringly.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p>',
                     icon: 'fist',
                     duration: 1,
 					direction: -1,
@@ -2274,7 +2275,7 @@ var CombatTracker = CombatTracker || (function() {
                 },
                 unconscious: {
                     name: 'Unconscious',
-                    description: '<p>An unconscious creature is <i>incapacitated</i>, can’t move or speak, and is unaware of its surroundings.</p> <p>The creature drops whatever it’s holding and falls prone.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
+                    description: '<p>An unconscious creature is <i>incapacitated</i>, canâ€™t move or speak, and is unaware of its surroundings.</p> <p>The creature drops whatever itâ€™s holding and falls prone.</p> <p>The creature automatically fails Strength and Dexterity saving throws.</p> <p>Attack rolls against the creature have advantage.</p> <p>Any Attack that hits the creature is a critical hit if the attacker is within 5 feet of the creature.</p>',
                     icon: 'sleepy',
                     duration: 1,
 					direction: -1,

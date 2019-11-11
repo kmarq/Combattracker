@@ -1,5 +1,5 @@
 /* 
- * Version 1.1.8 Beta
+ * Version 1.1.9 Beta
  * Made By Robin Kuiper
  * Changes in Version 0.2.1 by The Aaron
  * Changes in Version 0.3.0 and greater by Victor B
@@ -17,7 +17,7 @@ var CombatTracker = CombatTracker || (function() {
     'use strict';
 
     let round = 1,
-	    version = '1.1.8 Beta',
+	    version = '1.1.9 Beta',
         timerObj,
         intervalHandle,
         debug = true,
@@ -508,14 +508,24 @@ var CombatTracker = CombatTracker || (function() {
     },
     
     verifySetup = (selectedTokens) => {
-        let initAttributes, attribute, whisper, character, verified=true, i, tokenObj
+        let initAttributes, turnorder, attribute, whisper, character, verified=true, i, tokenObj
  
         if (!selectedTokens || selectedTokens.length == 0) {
             makeAndSendMenu('No tokens selected.  Combat not started',' ', whisper);   
             verified=false             
             return
         }
-
+        
+        if(!state[combatState].config.turnorder.throw_initiative){
+            turnorder = getTurnorder()
+            log('Turnorder:' + turnorder)
+            if (turnorder.length == 0) {
+                makeAndSendMenu('Auto Roll Initiative has been set to false and your turn order is currently empty',' ', whisper);
+                verified=false
+                return
+            }
+        }
+        
         selectedTokens.forEach(token => {
             if (token._type == 'graphic') {
                 tokenObj        = getObj('graphic', token._id)

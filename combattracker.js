@@ -108,6 +108,7 @@ var CombatTracker = CombatTracker || (function() {
             action      = args.shift(),
             condition   = args.shift(),
             changes     = args.shift(),
+			senderId	= msg.who,			 
             key, value, duration, direction
             
         if (debug) {
@@ -157,49 +158,52 @@ var CombatTracker = CombatTracker || (function() {
 			}
 			
 // 			// Below commands are only for GM's
-			if (!playerIsGM(msg.playerid)) return;
+			if (playerIsGM(msg.playerid)){
 
-            switch (action) {
-				case 'reset':
-						state[combatState] = {};
-						state[statusState] = {};
-						setDefaults(true);
+				switch (action) {
+					case 'reset':
+							state[combatState] = {};
+							state[statusState] = {};
+							setDefaults(true);
+							sendConfigMenu();
+					break;
+					case 'config':
+						editCombatState(condition,key,value)              
+					break;
+					case 'tracker':
 						sendConfigMenu();
-				break;
-				case 'config':
-					editCombatState(condition,key,value)              
-				break;
-				case 'tracker':
-					sendConfigMenu();
-				break;				
-				case 'sort':
-					sortTurnorder();
-				break;
-				case 'prev':
-					PrevTurn();
-				break;
-				case 'start':
-					startCombat(msg.selected);
-				break;
-				case 'stop':
-					stopCombat();
-					sendTrackerMenu();
-				break;
-				case 'st':
-					stopTimer();
-					sendTrackerMenu();
-				break;
-				case 'pt':
-					pauseTimer();
-					sendTrackerMenu();
-				break;
+					break;				
+					case 'sort':
+						sortTurnorder();
+					break;
+					case 'prev':
+						PrevTurn();
+					break;
+					case 'start':
+						startCombat(msg.selected);
+					break;
+					case 'stop':
+						stopCombat();
+						sendTrackerMenu();
+					break;
+					case 'st':
+						stopTimer();
+						sendTrackerMenu();
+					break;
+					case 'pt':
+						pauseTimer();
+						sendTrackerMenu();
+					break;
+				}
+			}
+			switch(action) {	
 				case 'all':
 					editFavoriteState('All');
-					sendTrackerMenu();
+					sendTrackerMenu(senderId);
 				break;	
 				case 'fav':
 					editFavoriteState('Favorites');
-					sendTrackerMenu();
+					sendTrackerMenu(senderId);
 				break;						
 				case 'add':
 				    addCommand(msg.selected, condition, duration, direction)
@@ -209,13 +213,14 @@ var CombatTracker = CombatTracker || (function() {
 				}
 				break;
                 case 'show': {
-                    showConditions(msg.selected, (args.shift() === 'p'));
+                    showConditions(msg.selected, senderId);
     			}
                 break;				
 				default:
 					sendTrackerMenu();
 				break;
 			}
+			
 		}	
 		
         if (command === state[statusState].config.command) {
@@ -1578,7 +1583,10 @@ var CombatTracker = CombatTracker || (function() {
         makeAndSendMenu(contents, 'Condition Setup');
     },
 
-    sendTrackerMenu = () => {
+    sendTrackerMenu = (senderId) => {
+		if (typeof senderId === 'undefined') {
+			senderId = 'gm'
+		}								
         let nextButton          = makeImageButton('!ct next b',nextImage,'Next Turn','transparent',18),
             prevButton          = makeImageButton('!ct prev b',prevImage,'Previous Turn','transparent',18),
             stopButton          = makeImageButton('!ct stop b',stopImage,'Stop Combat','transparent',18),
@@ -1641,17 +1649,17 @@ var CombatTracker = CombatTracker || (function() {
                 listItems.push(listContents);
             }
         }
-        makeAndSendMenu(contents+makeList(listItems),titleText,'gm');
+        makeAndSendMenu(contents+makeList(listItems),titleText,senderId);
     },
     
-    showConditions = (tokens, toPlayers) => {
+    showConditions = (tokens, senderId) => {
         let tokenObj
         
         if (tokens) {
             tokens.forEach(token => {
                 if (token._type == 'graphic') {
                     tokenObj = getObj('graphic', token._id);
-                    announcePlayer(tokenObj, 'gm', false, false, true);
+                    announcePlayer(tokenObj, senderId, false, false, true);
                 }
             })    
         }    
